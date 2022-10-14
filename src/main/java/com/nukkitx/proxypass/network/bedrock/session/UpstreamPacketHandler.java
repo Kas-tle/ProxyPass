@@ -1,6 +1,5 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
@@ -9,7 +8,6 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jose.shaded.json.JSONObject;
-import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.data.PacketCompressionAlgorithm;
@@ -21,12 +19,16 @@ import com.nukkitx.protocol.bedrock.packet.RequestNetworkSettingsPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
+import com.valaphee.synergy.proxy.mcbe.auth.DefaultAuth;
+import org.jose4j.jws.JsonWebSignature;
+import org.jose4j.lang.JoseException;
 import io.netty.util.AsciiString;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
 import java.security.interfaces.ECPublicKey;
+import java.util.Base64;
 import java.util.UUID;
 
 @Log4j2
@@ -159,20 +161,12 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
-            SignedJWT authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
             JWSObject skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
-            chainData.remove(chainData.size() - 1);
-            chainData.add(authData.serialize());
-            JsonNode json = ProxyPass.JSON_MAPPER.createObjectNode().set("chain", chainData);
-            AsciiString chainData;
-            try {
-                chainData = new AsciiString(ProxyPass.JSON_MAPPER.writeValueAsBytes(json));
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
 
             LoginPacket login = new LoginPacket();
-            login.setChainData(chainData);
+            DefaultAuth auth = new DefaultAuth(proxySession.getProxyKeyPair());
+            auth.setVersion(ProxyPass.MINECRAFT_VERSION);
+            login.setChainData(AsciiString.of(auth.getJws()));
             login.setSkinData(AsciiString.of(skinData.serialize()));
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 

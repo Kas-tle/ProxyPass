@@ -27,7 +27,6 @@ public class ProxyBedrockEventHandler implements BedrockServerEventHandler {
         ADVERTISEMENT.setPlayerCount(0);
         ADVERTISEMENT.setMaximumPlayerCount(20);
         ADVERTISEMENT.setSubMotd("https://github.com/NukkitX/ProxyPass");
-        ADVERTISEMENT.setNintendoLimited(true);
     }
 
     public ProxyBedrockEventHandler(ProxyPass proxy) {
