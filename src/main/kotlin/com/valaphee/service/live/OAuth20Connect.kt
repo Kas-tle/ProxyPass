@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package com.valaphee.synergy.proxy.mcbe.service
+package com.valaphee.service.live
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import java.util.UUID
 
 /**
  * @author Kevin Ludwig
  */
-class OAuth20Error(
-    @get:JsonProperty("error") val error: String,
-    @get:JsonProperty("error_description") val errorDescription: String,
-    @get:JsonProperty("correlation_id") val correlationId: UUID
+data class OAuth20Connect(
+    @JsonProperty("user_code") val userCode: String,
+    @JsonProperty("device_code") val deviceCode: String,
+    @JsonProperty("verification_uri") val verificationUri: String,
+    @JsonProperty("interval") val interval: Int,
+    @JsonProperty("expires_in") val expiresIn: Int
 )

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.valaphee.synergy.proxy.mcbe.service
+package com.valaphee.service.live
 
 import com.valaphee.synergy.HttpClient
 import io.ktor.client.call.body

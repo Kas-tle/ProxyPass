@@ -17,16 +17,15 @@
 package com.valaphee.synergy.proxy.mcbe.auth
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.valaphee.service.live.OAuth20Authenticator
+import com.valaphee.service.xbl.DeviceAuthResponse
+import com.valaphee.service.xbl.Signature
+import com.valaphee.service.xbl.UserAuthResponse
+import com.valaphee.service.xbl.toUnsignedByteArray
 import com.valaphee.synergy.HttpClient
 import com.valaphee.synergy.ObjectMapper
-import com.valaphee.synergy.proxy.mcbe.service.DeviceAuth
-import com.valaphee.synergy.proxy.mcbe.service.OAuth20Authenticator
-import com.valaphee.synergy.proxy.mcbe.service.Signature
-import com.valaphee.synergy.proxy.mcbe.service.UserAuth
-import com.valaphee.synergy.proxy.mcbe.service.toUnsignedByteArray
 import io.ktor.client.call.body
 import io.ktor.client.request.header
-import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -56,11 +55,9 @@ class DefaultAuth(
             System.out.println(authorization);
             val authRootKey = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
             val authJwsChain = HttpClient.post("https://multiplayer.minecraft.net/authentication") {
-                headers {
-                    header("User-Agent", "MCPE/Android")
-                    header("Client-Version", version)
-                    header("Authorization", authorization)
-                }
+                header("User-Agent", "MCPE/Android")
+                header("Client-Version", version)
+                header("Authorization", authorization)
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("identityPublicKey" to keyPair.public.encoded.encodeBase64()))
             }.body<Map<*, *>>()["chain"] as List<*>
@@ -87,37 +84,38 @@ class DefaultAuth(
                 val deviceKeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
                 val devicePublicKeyW = (deviceKeyPair.public as ECPublicKey).w
                 val httpClient = HttpClient.config { install(Signature) { keyPair = deviceKeyPair } }
-                val userAuth = httpClient.post("https://sisu.xboxlive.com/authorize") {
-                    headers { header("X-Xbl-Contract-Version", "1") }
+                val deviceAuthResponse = httpClient.post("https://device.auth.xboxlive.com/device/authenticate") {
+                    header("X-Xbl-Contract-Version", "1")
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        mapOf(
+                            "RelyingParty" to "http://auth.xboxlive.com",
+                            "TokenType" to "JWT",
+                            "Properties" to mapOf(
+                                "AuthMethod" to "ProofOfPossession",
+                                "Id" to "{${UUID.randomUUID()}}",
+                                "DeviceType" to "Android",
+                                "Version" to "10",
+                                "ProofKey" to mapOf(
+                                    "crv" to "P-256",
+                                    "alg" to "ES256",
+                                    "use" to "sig",
+                                    "kty" to "EC",
+                                    "x" to Base64.getUrlEncoder().withoutPadding().encodeToString(devicePublicKeyW.affineX.abs().toUnsignedByteArray()),
+                                    "y" to Base64.getUrlEncoder().withoutPadding().encodeToString(devicePublicKeyW.affineY.abs().toUnsignedByteArray())
+                                )
+                            )
+                        )
+                    )
+                }.body<DeviceAuthResponse>()
+                val userAuthResponse = httpClient.post("https://sisu.xboxlive.com/authorize") {
+                    header("X-Xbl-Contract-Version", "1")
                     contentType(ContentType.Application.Json)
                     setBody(
                         mapOf(
                             "AccessToken" to "t=$it",
                             "AppId" to "0000000048183522",
-                            "deviceToken" to httpClient.post("https://device.auth.xboxlive.com/device/authenticate") {
-                                headers { header("X-Xbl-Contract-Version", "1") }
-                                contentType(ContentType.Application.Json)
-                                setBody(
-                                    mapOf(
-                                        "RelyingParty" to "http://auth.xboxlive.com",
-                                        "TokenType" to "JWT",
-                                        "Properties" to mapOf(
-                                            "AuthMethod" to "ProofOfPossession",
-                                            "Id" to "{${UUID.randomUUID()}}",
-                                            "DeviceType" to "Android",
-                                            "Version" to "10",
-                                            "ProofKey" to mapOf(
-                                                "crv" to "P-256",
-                                                "alg" to "ES256",
-                                                "use" to "sig",
-                                                "kty" to "EC",
-                                                "x" to Base64.getUrlEncoder().withoutPadding().encodeToString(devicePublicKeyW.affineX.abs().toUnsignedByteArray()),
-                                                "y" to Base64.getUrlEncoder().withoutPadding().encodeToString(devicePublicKeyW.affineY.abs().toUnsignedByteArray())
-                                            )
-                                        )
-                                    )
-                                )
-                            }.body<DeviceAuth>().token,
+                            "deviceToken" to deviceAuthResponse.token,
                             "Sandbox" to "RETAIL",
                             "UseModernGamertag" to true,
                             "SiteName" to "user.auth.xboxlive.com",
@@ -132,8 +130,8 @@ class DefaultAuth(
                             )
                         )
                     )
-                }.body<UserAuth>()
-                "XBL3.0 x=${userAuth.authorizationToken!!.claim!!.userInfo!![0].userHash};${userAuth.authorizationToken.token}"
+                }.body<UserAuthResponse>()
+                "XBL3.0 x=${userAuthResponse.authorizationToken!!.claim!!.userInfo!![0].userHash};${userAuthResponse.authorizationToken.token}"
             } ?: error("")
         }
     }

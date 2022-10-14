@@ -14,28 +14,18 @@
  * limitations under the License.
  */
 
-package com.valaphee.synergy.proxy.mcbe.service
+package com.valaphee.service.live
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
  * @author Kevin Ludwig
  */
-class UserAuth(
-    @get:JsonProperty("AuthorizationToken") val authorizationToken: AuthorizationToken?
-) {
-    class AuthorizationToken(
-        @get:JsonProperty("DisplayClaims") val claim: Claim?,
-        @get:JsonProperty("Token") val token: String?
-    ) {
-        class Claim(
-            @get:JsonProperty("xui") val userInfo: List<UserInfo>?
-        ) {
-            class UserInfo(
-                @get:JsonProperty("gtg") val userName: String?,
-                @get:JsonProperty("xid") val xboxUserId: String?,
-                @get:JsonProperty("uhs") val userHash: String?
-            )
-        }
-    }
-}
+data class OAuth20Token(
+    @JsonProperty("token_type") val tokenType: String,
+    @JsonProperty("expires_in") val expiresIn: Int,
+    @JsonProperty("scope") val scope: String,
+    @JsonProperty("access_token") val accessToken: String,
+    @JsonProperty("refresh_token") val refreshToken: String,
+    @JsonProperty("user_id") val userId: String
+)

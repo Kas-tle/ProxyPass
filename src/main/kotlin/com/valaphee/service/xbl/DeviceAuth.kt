@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.valaphee.synergy.proxy.mcbe.service
+package com.valaphee.service.xbl
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
  * @author Kevin Ludwig
  */
-class DeviceAuth(
-    @get:JsonProperty("Token") val token: String?
+class DeviceAuthResponse(
+    @JsonProperty("Token") val token: String
 )

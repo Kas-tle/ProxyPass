@@ -144,7 +144,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         log.debug("Initializing proxy session");
         BedrockClient client = proxy.newClient();
         client.setRakNetVersion(ProxyPass.CODEC.getRaknetProtocolVersion());
-        client.connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
+        client.directConnect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
             if (throwable != null) {
                 log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
                 return;

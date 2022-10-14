@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
-package com.valaphee.synergy.proxy.mcbe.service
+package com.valaphee.service.minecraftservices.gatherings
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
  * @author Kevin Ludwig
  */
-class OAuth20Connect(
-    @get:JsonProperty("user_code") val userCode: String,
-    @get:JsonProperty("device_code") val deviceCode: String,
-    @get:JsonProperty("verification_uri") val verificationUri: String,
-    @get:JsonProperty("interval") val interval: Int,
-    @get:JsonProperty("expires_in") val expiresIn: Int
-)
+data class VenueResponse(
+    @JsonProperty("result") val result: Result
+) {
+    data class Result(
+        @JsonProperty("venue") val venue: Venue
+    ) {
+        data class Venue(
+            @JsonProperty("serverIpAddress") val serverIpAddress: String,
+            @JsonProperty("serverPort") val serverPort: Int
+        )
+    }
+}
