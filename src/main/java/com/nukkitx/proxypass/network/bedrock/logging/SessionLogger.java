@@ -4,9 +4,14 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.nimbusds.jose.shaded.json.JSONObject;
+import com.nukkitx.network.VarInts;
 import com.nukkitx.protocol.bedrock.BedrockPacket;
 import com.nukkitx.protocol.bedrock.BedrockSession;
+import com.nukkitx.protocol.bedrock.exception.PacketSerializeException;
 import com.nukkitx.proxypass.ProxyPass;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufUtil;
 import lombok.extern.log4j.Log4j2;
 
 import javax.imageio.ImageIO;
@@ -35,13 +40,16 @@ public class SessionLogger {
     private final Path dataPath;
 
     private final Path logPath;
+    private final Path hexLogPath;
 
     private final Deque<String> logBuffer = new ArrayDeque<>();
+    private final Deque<String> hexLogBuffer = new ArrayDeque<>();
 
     public SessionLogger(ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
         this.proxy = proxy;
         this.dataPath = sessionsDir.resolve(displayName + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
+        this.hexLogPath = dataPath.resolve("packets.hex.log");
     }
 
     public void start() {
@@ -100,6 +108,24 @@ public class SessionLogger {
             if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
                 System.out.println(logPrefix + packet);
             }
+
+            /*ByteBuf packetBuffer = ByteBufAllocator.DEFAULT.ioBuffer();
+            try {
+                int id = ProxyPass.CODEC.getId(packet);
+                int header = 0;
+                header |= (id & 0x3ff);
+                header |= (packet.getSenderId() & 3) << 10;
+                header |= (packet.getClientId() & 3) << 12;
+                VarInts.writeUnsignedInt(packetBuffer, header);
+                ProxyPass.CODEC.tryEncode(packetBuffer, packet, session);
+                synchronized (hexLogBuffer) {
+                    hexLogBuffer.addLast(logPrefix + " " + ByteBufUtil.hexDump(packetBuffer));
+                }
+            } catch (PacketSerializeException e) {
+                //ignore
+            } finally {
+                packetBuffer.release();
+            }*/
         }
     }
 
@@ -124,6 +150,16 @@ public class SessionLogger {
                 log.error("Unable to flush packet log", e);
             }
         }
+        /*synchronized (hexLogBuffer) {
+            try {
+                if (proxy.getConfiguration().getLogTo().logToFile) {
+                    Files.write(hexLogPath, hexLogBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                }
+                hexLogBuffer.clear();
+            } catch (IOException e) {
+                log.error("Unable to flush packet log", e);
+            }
+        }*/
     }
 
 }
