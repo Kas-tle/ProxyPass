@@ -161,6 +161,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
+            skinData.put("DeviceOS", 1);
             JWSObject skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
 
             LoginPacket login = new LoginPacket();

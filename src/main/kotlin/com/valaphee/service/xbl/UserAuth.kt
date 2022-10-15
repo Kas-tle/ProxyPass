@@ -32,8 +32,8 @@ class UserAuthResponse(
             @JsonProperty("xui") val userInfo: List<UserInfo>
         ) {
             class UserInfo(
-                @JsonProperty("gtg") val userName: String,
-                @JsonProperty("xid") val xboxUserId: String,
+                @JsonProperty("gtg") val userName: String?,
+                @JsonProperty("xid") val xboxUserId: String?,
                 @JsonProperty("uhs") val userHash: String
             )
         }

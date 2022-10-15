@@ -52,7 +52,6 @@ class DefaultAuth(
     private var _authJws: String? = null
     override val jws: String
         get() = _authJws ?: runBlocking {
-            System.out.println(authorization);
             val authRootKey = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
             val authJwsChain = HttpClient.post("https://multiplayer.minecraft.net/authentication") {
                 header("User-Agent", "MCPE/Android")
