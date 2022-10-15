@@ -20,15 +20,12 @@ import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import com.valaphee.synergy.proxy.mcbe.auth.DefaultAuth;
-import org.jose4j.jws.JsonWebSignature;
-import org.jose4j.lang.JoseException;
 import io.netty.util.AsciiString;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
 import java.security.interfaces.ECPublicKey;
-import java.util.Base64;
 import java.util.UUID;
 
 @Log4j2

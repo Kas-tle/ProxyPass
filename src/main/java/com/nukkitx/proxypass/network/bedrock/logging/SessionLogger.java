@@ -40,7 +40,7 @@ public class SessionLogger {
     private final Path dataPath;
 
     private final Path logPath;
-    private final Path hexLogPath;
+    /*private final Path hexLogPath;*/
 
     private final Deque<String> logBuffer = new ArrayDeque<>();
     private final Deque<String> hexLogBuffer = new ArrayDeque<>();
@@ -49,7 +49,7 @@ public class SessionLogger {
         this.proxy = proxy;
         this.dataPath = sessionsDir.resolve(displayName + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
-        this.hexLogPath = dataPath.resolve("packets.hex.log");
+        /*this.hexLogPath = dataPath.resolve("packets.hex.log");*/
     }
 
     public void start() {

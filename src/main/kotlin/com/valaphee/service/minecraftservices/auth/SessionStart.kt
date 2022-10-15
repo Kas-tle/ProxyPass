@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 
-package com.valaphee.service.minecraftservices.authorizationsecondary
+package com.valaphee.service.minecraftservices.auth
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 
 /**
  * @author Kevin Ludwig
@@ -65,3 +71,8 @@ data class SessionStartResponse(
         )
     }
 }
+
+suspend fun HttpClient.startSession(uri: String = "https://authorization-secondary.franchise.minecraft-services.net", request: SessionStartRequest) = post("$uri/api/v1.0/session/start") {
+    contentType(ContentType.Application.Json)
+    setBody(request)
+}.body<SessionStartResponse>()

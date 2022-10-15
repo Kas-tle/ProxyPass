@@ -16,8 +16,6 @@
 
 package com.valaphee.service.minecraftservices.gatherings
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.valaphee.service.minecraftservices.discovery.DiscoveryResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -25,20 +23,4 @@ import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import java.util.UUID
 
-/**
- * @author Kevin Ludwig
- */
-data class VenueResponse(
-    @JsonProperty("result") val result: Result
-) {
-    data class Result(
-        @JsonProperty("venue") val venue: Venue
-    ) {
-        data class Venue(
-            @JsonProperty("serverIpAddress") val serverIpAddress: String,
-            @JsonProperty("serverPort") val serverPort: Int
-        )
-    }
-}
-
-suspend fun HttpClient.venue(uri: String = "https://gatherings.franchise.minecraft-services.net", authorization: String, id: UUID) = get("$uri/api/v1.0/venue/$id") { header(HttpHeaders.Authorization, authorization) }.body<DiscoveryResponse>()
+suspend fun HttpClient.publicConfig(uri: String = "https://persona.franchise.minecraft-services.net", authorization: String, id: UUID) = get("$uri/api/v1.0/config/public/$id") { header(HttpHeaders.Authorization, authorization) }.body<String>()

@@ -14,10 +14,16 @@
  * limitations under the License.
  */
 
-package com.valaphee.service.playfabapi.authenticate
+package com.valaphee.service.playfabapi.authentication
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.valaphee.service.playfabapi.EntityToken
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 
 /**
  * @author Kevin Ludwig
@@ -33,3 +39,8 @@ data class GetEntityTokenRequest(
 data class GetEntityTokenResponse(
     @JsonProperty("data") val data: EntityToken,
 )
+
+suspend fun HttpClient.getEntityToken(titleId: String, request: GetEntityTokenRequest) = post("https://$titleId.playfabapi.com/Authentication/GetEntityToken?sdk=XPlatCppSdk-3.6.190304") {
+    contentType(ContentType.Application.Json)
+    setBody(request)
+}.body<GetEntityTokenResponse>()
