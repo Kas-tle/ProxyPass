@@ -23,4 +23,4 @@ import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import java.util.UUID
 
-suspend fun HttpClient.publicConfig(uri: String = "https://persona.franchise.minecraft-services.net", authorization: String, id: UUID) = get("$uri/api/v1.0/config/public/$id") { header(HttpHeaders.Authorization, authorization) }.body<String>()
+suspend fun HttpClient.publicConfig(uri: String = "https://gatherings.franchise.minecraft-services.net", authorization: String, id: UUID) = get("$uri/api/v1.0/config/public/$id") { header(HttpHeaders.Authorization, authorization) }.body<String>()
