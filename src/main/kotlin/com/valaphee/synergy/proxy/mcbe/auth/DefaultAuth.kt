@@ -130,7 +130,7 @@ class DefaultAuth(
                         )
                     )
                 }.body<UserAuthResponse>()
-                "XBL3.0 x=${userAuthResponse.authorizationToken!!.claim!!.userInfo!![0].userHash};${userAuthResponse.authorizationToken.token}"
+                "XBL3.0 x=${userAuthResponse.authorizationToken.claim.userInfo[0].userHash};${userAuthResponse.authorizationToken.token}"
             } ?: error("")
         }
     }
