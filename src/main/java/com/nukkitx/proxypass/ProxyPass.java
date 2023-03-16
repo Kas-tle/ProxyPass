@@ -13,7 +13,7 @@ import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v560.Bedrock_v560;
+import com.nukkitx.protocol.bedrock.v567.Bedrock_v567patch;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
@@ -37,12 +37,14 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v560.V560_CODEC;
+    public static final BedrockPacketCodec CODEC = Bedrock_v567patch.BEDROCK_V567PATCH.toBuilder()
+        .protocolVersion(568)
+        .minecraftVersion("1.19.63")
+        .build();
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+    public static final int SHIELD_RUNTIME_ID = 355; // Change this when the item palette changes.
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
-
-    public static final int SHIELD_RUNTIME_ID = 355; // Change this when the item palette changes.
 
     static {
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
@@ -59,11 +61,11 @@ public class ProxyPass {
     }
 
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private BedrockServer bedrockServer;
     private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private int maxClients = 0;
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
+    private BedrockServer bedrockServer;
+    private int maxClients = 0;
     private InetSocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
@@ -153,7 +155,7 @@ public class ProxyPass {
     public void saveNBT(String dataName, Object dataTag) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-             NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)){
+             NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)) {
             nbtOutputStream.writeTag(dataTag);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -163,7 +165,7 @@ public class ProxyPass {
     public Object loadNBT(String dataName) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (InputStream inputStream = Files.newInputStream(path);
-             NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)){
+             NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)) {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -173,7 +175,7 @@ public class ProxyPass {
     public Object loadGzipNBT(String dataName) {
         Path path = dataDir.resolve(dataName);
         try (InputStream inputStream = Files.newInputStream(path);
-             NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)){
+             NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)) {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             return null;
@@ -210,8 +212,8 @@ public class ProxyPass {
     public boolean isIgnoredPacket(Class<?> clazz) {
         return this.ignoredPackets.contains(clazz);
     }
-    
+
     public boolean isFull() {
-        return maxClients > 0 ? this.clients.size() >= maxClients : false;
+        return maxClients > 0 && this.clients.size() >= maxClients;
     }
 }
