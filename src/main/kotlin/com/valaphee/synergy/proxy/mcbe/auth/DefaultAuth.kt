@@ -76,6 +76,11 @@ class DefaultAuth(
             }.compactSerialization
             ObjectMapper.writeValueAsString(mapOf("chain" to listOf(authUserJws) + authJwsChain)).also { _authJws = it }
         }
+    
+        fun getJwsAsList(): List<String> {
+            val jwsAsMap = ObjectMapper.readValue(jws, Map::class.java)
+            return jwsAsMap["chain"] as List<String>
+        }
 
     companion object {
         private val authorization = runBlocking {
