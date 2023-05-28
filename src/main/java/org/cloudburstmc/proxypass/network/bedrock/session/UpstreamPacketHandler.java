@@ -1,9 +1,6 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.google.common.base.Preconditions;
 import com.nimbusds.jose.JOSEException;
@@ -12,7 +9,6 @@ import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jose.shaded.json.JSONObject;
 import java.text.ParseException;
 import com.valaphee.synergy.proxy.mcbe.auth.DefaultAuth;
-import io.netty.util.AsciiString;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -23,10 +19,8 @@ import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
 
-import java.io.IOException;
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Log4j2
@@ -37,7 +31,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyPass proxy;
     private JSONObject skinData;
     private JSONObject extraData;
-    private List<SignedJWT> chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
 
@@ -119,7 +112,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             verifyJwt(clientJwt, identityPublicKey);
 
             skinData = new JSONObject(clientJwt.getPayload().toJSONObject());
-            chainData = packet.getChain();
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
@@ -177,17 +169,4 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         });
     }
 
-}
-
-class AuthChain {
-    private List<String> chain;
-
-    // Getters and setters
-    public List<String> getChain() {
-        return chain;
-    }
-
-    public void setChain(List<String> chain) {
-        this.chain = chain;
-    }
 }
