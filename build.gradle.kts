@@ -50,32 +50,19 @@ tasks.shadowJar {
     transform(Log4j2PluginsCacheFileTransformer())
 }
 
+// Unsure why we need this... https://github.com/johnrengelman/shadow/issues/713
 tasks {
     val shadowJar by existing(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar::class)
-    val distZip by existing(Zip::class) // adjust with the actual type of your distZip task
-    val distTar by existing(Tar::class) // adjust with the actual type of your distTar task
-    val startScripts by existing(CreateStartScripts::class) // adjust with the actual type of your startScripts task
-
-    distZip.configure {
-        dependsOn(shadowJar)
-    }
-
-    distTar.configure {
-        dependsOn(shadowJar)
-    }
-
-    startScripts.configure {
-        dependsOn(shadowJar)
-    }
-}
-
-tasks {
     val jar by existing(Jar::class)
-    val startShadowScripts by existing(CreateStartScripts::class) // adjust with the actual type of your startShadowScripts task
+    val distZip by existing(Zip::class)
+    val distTar by existing(Tar::class)
+    val startScripts by existing(CreateStartScripts::class)
+    val startShadowScripts by existing(CreateStartScripts::class)
 
-    startShadowScripts.configure {
-        dependsOn(jar)
-    }
+    distZip.configure { dependsOn(shadowJar) }
+    distTar.configure { dependsOn(shadowJar) }
+    startScripts.configure { dependsOn(shadowJar) }
+    startShadowScripts.configure { dependsOn(jar) }
 }
 
 tasks.named<JavaExec>("run") {
@@ -84,6 +71,6 @@ tasks.named<JavaExec>("run") {
 }
 
 java.sourceSets["main"].java {
-    srcDir("src/main/kotlin")
     srcDir("src/main/java")
+    srcDir("src/main/kotlin")
 }
