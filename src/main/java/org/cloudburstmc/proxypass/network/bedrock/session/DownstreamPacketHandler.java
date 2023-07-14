@@ -7,8 +7,10 @@ import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.nbt.NBTOutputStream;
 import org.cloudburstmc.nbt.NbtMap;
+import org.cloudburstmc.nbt.NbtMapBuilder;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.data.BlockPropertyData;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.SimpleItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
@@ -92,6 +94,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
         proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
         proxy.saveJson("runtime_item_states.json", itemData);
+
+        NbtMapBuilder blockPropertiesBuilder = NbtMap.builder();
+        for (BlockPropertyData blockProperty : packet.getBlockProperties()) {
+            blockPropertiesBuilder.put(blockProperty.getName(), blockProperty.getProperties());
+        }
+        proxy.saveNBT("block_properties", blockPropertiesBuilder.build());
 
         return PacketSignal.UNHANDLED;
     }
