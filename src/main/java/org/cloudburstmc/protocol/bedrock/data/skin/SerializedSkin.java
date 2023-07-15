@@ -1,7 +1,7 @@
 package org.cloudburstmc.protocol.bedrock.data.skin;
 
-import com.nimbusds.jose.shaded.json.JSONObject;
-import com.nimbusds.jose.shaded.json.JSONValue;
+import org.jose4j.json.internal.json_simple.JSONObject;
+import org.jose4j.json.internal.json_simple.JSONValue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.*;
 

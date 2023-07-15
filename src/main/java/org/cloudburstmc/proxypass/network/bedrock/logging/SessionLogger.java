@@ -3,11 +3,11 @@ package org.cloudburstmc.proxypass.network.bedrock.logging;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.nimbusds.jose.shaded.json.JSONObject;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.jose4j.json.internal.json_simple.JSONObject;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -17,6 +17,9 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.Executors;
@@ -27,6 +30,11 @@ import java.util.function.Supplier;
 
 @Log4j2
 public class SessionLogger {
+
+    private static final String PATTERN_FORMAT = "HH:mm:ss:SSS";
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN_FORMAT)
+            .withZone(ZoneId.systemDefault());
+    private static final String LOG_FORMAT = "[%s] [%s] - %s";
 
     private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
@@ -93,15 +101,16 @@ public class SessionLogger {
         String logPrefix = getLogPrefix(upstream);
         if (!proxy.isIgnoredPacket(packet.getClass())) {
             if (session.isLogging() && log.isTraceEnabled()) {
-                log.trace(logPrefix + " {}: {}", session.getSocketAddress(), packet);
+                log.trace("{} {}: {}", logPrefix, session.getSocketAddress(), packet);
             }
 
+            String logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), logPrefix, packet);
             if (proxy.getConfiguration().isLoggingPackets()) {
-                logToBuffer(() -> logPrefix + packet);
+                logToBuffer(() -> logMessage);
             }
 
             if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
-                System.out.println(logPrefix + packet);
+                System.out.println(logMessage);
             }
 
             /*ByteBuf packetBuffer = ByteBufAllocator.DEFAULT.ioBuffer();
@@ -125,7 +134,7 @@ public class SessionLogger {
     }
 
     private String getLogPrefix(boolean upstream) {
-        return upstream ? "[SERVER BOUND]  -  " : "[CLIENT BOUND]  -  ";
+        return upstream ? "SERVER BOUND" : "CLIENT BOUND";
     }
 
     private void logToBuffer(Supplier<String> supplier) {

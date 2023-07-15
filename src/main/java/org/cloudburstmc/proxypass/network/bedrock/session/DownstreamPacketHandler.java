@@ -7,7 +7,6 @@ import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.nbt.NBTOutputStream;
 import org.cloudburstmc.nbt.NbtMap;
-import org.cloudburstmc.nbt.NbtType;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
@@ -18,12 +17,13 @@ import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.protocol.common.SimpleDefinitionRegistry;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.RecipeUtils;
-import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -38,6 +38,13 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
+    @Override
+    public PacketSignal handle(CompressedBiomeDefinitionListPacket packet) {
+        proxy.saveNBT("biome_definitions", packet.getDefinitions());
+        return PacketSignal.UNHANDLED;
+    }
+
+    // Handles biome definitions for versions prior to 1.19.80
     @Override
     public PacketSignal handle(BiomeDefinitionListPacket packet) {
         proxy.saveNBT("biome_definitions", packet.getDefinitions());
@@ -73,13 +80,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 .addAll(packet.getItemDefinitions())
                 .add(new SimpleItemDefinition("minecraft:empty", 0, false))
                 .build();
-        UnknownBlockDefinitionRegistry blockDefinitions = new UnknownBlockDefinitionRegistry();
 
         this.session.getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
         player.getUpstream().getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
 
-        this.session.getPeer().getCodecHelper().setBlockDefinitions(blockDefinitions);
-        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(blockDefinitions);
+        this.session.getPeer().getCodecHelper().setBlockDefinitions(this.proxy.getBlockDefinitions());
+        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(this.proxy.getBlockDefinitions());
 
         itemData.sort(Comparator.comparing(o -> o.name));
 
@@ -104,16 +110,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     private void dumpCreativeItems(ItemData[] contents) {
-        // Load up block palette for conversion, if we can find it.
-        Object object = proxy.loadGzipNBT("block_palette.nbt");
-        List<NbtMap> paletteTags = null;
-        if (object instanceof NbtMap) {
-            NbtMap map = (NbtMap) object;
-            paletteTags = map.getList("blocks", NbtType.COMPOUND);
-        } else {
-            log.warn("Failed to load block palette for creative content dump. Output will contain block runtime IDs!");
-        }
-
         List<CreativeItemEntry> entries = new ArrayList<>();
         for (ItemData data : contents) {
             ItemDefinition entry = data.getDefinition();
@@ -122,8 +118,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
             String blockTag = null;
             Integer blockRuntimeId = null;
-            if (data.getBlockDefinition() != null && paletteTags != null) {
-                blockTag = encodeNbtToString(paletteTags.get(data.getBlockDefinition().getRuntimeId()));
+            if (data.getBlockDefinition() instanceof NbtBlockDefinitionRegistry.NbtBlockDefinition definition) {
+                blockTag = encodeNbtToString(definition.tag());
             } else if (data.getBlockDefinition() != null) {
                 blockRuntimeId = data.getBlockDefinition().getRuntimeId();
             }
@@ -151,7 +147,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
-    // Pre 1.16 method of Creative Items
+    // Handles creative items for versions prior to 1.16
     @Override
     public PacketSignal handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {
@@ -161,24 +157,23 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {
-        List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-        entries.sort(Map.Entry.comparingByKey());
-
-        Map<String, Integer> sortedMap = new LinkedHashMap<>();
-        for (Map.Entry<String, Integer> entry : entries) {
-            sortedMap.put(entry.getKey(), entry.getValue());
-        }
-        return sortedMap;
+        return map.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new));
     }
 
     private static String encodeNbtToString(NbtMap tag) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try (NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
             stream.writeTag(tag);
+            return Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
     }
 
     @Value
