@@ -119,10 +119,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             this.session.setPlayer(proxySession);
 
             try {
-                String jwt = chainData.get(chainData.size() - 1);
-                JsonWebSignature jws = new JsonWebSignature();
-                jws.setCompactSerialization(jwt);
-                player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
                 player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
