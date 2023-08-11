@@ -1,9 +1,10 @@
 name: Release
 
 on:
+    workflow_dispatch:
     push:
         branches:
-            - "online-mode"
+            - "*"
 
 jobs:
   build:
@@ -16,21 +17,26 @@ jobs:
         fetch-depth: 0
     - name: Get previous build number
       id: getPreviousBuild
-      uses: WyriHaximus/github-action-get-previous-tag@v1
-      with:
-        fallback: 0
+      env:
+        BRANCH: ${{ github.ref_name }}
+      run: | 
+        PREVIOUS_TAG=$(git for-each-ref --sort=-version:refname --count 1 --format="%(refname:short)" "refs/tags/${BRANCH}*")
+        echo tag=${PREVIOUS_TAG} >> $GITHUB_OUTPUT
     - name: Get current build number
       id: getCurrentBuild
       env:
-        PREVIOUS_BUILD: ${{ steps.getPreviousBuild.outputs.tag }}
-      run: echo result=$((++PREVIOUS_BUILD)) >> $GITHUB_OUTPUT
+        PREVIOUS_TAG: ${{ steps.getPreviousBuild.outputs.tag }}
+        BRANCH: ${{ github.ref_name }}
+      run: | 
+        echo tag=${BRANCH}-$((10#${PREVIOUS_TAG##*-}+1)) >> $GITHUB_OUTPUT
+        echo number=$((10#${PREVIOUS_TAG##*-}+1)) >> $GITHUB_OUTPUT
     - name: Bump version and push tag
       id: tag_version
       uses: mathieudutour/github-tag-action@v6.1
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         tag_prefix: ''
-        custom_tag: ${{ steps.getCurrentBuild.outputs.result }}
+        custom_tag: ${{ steps.getCurrentBuild.outputs.tag }}
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
@@ -49,7 +55,7 @@ jobs:
     - name: Generate release diff
       env:
         BEGIN_COMMIT: ${{ steps.getPreviousBuild.outputs.tag }}
-        END_COMMIT: ${{ steps.getCurrentBuild.outputs.result }}
+        END_COMMIT: ${{ steps.getCurrentBuild.outputs.tag }}
       run: git fetch --tags --force && git log --pretty=format:"* %s (%h)" ${BEGIN_COMMIT}..${END_COMMIT} > release_notes.md
     - name: Create release
       uses: ncipollo/release-action@v1
@@ -58,7 +64,7 @@ jobs:
         allowUpdates: true
         bodyFile: "release_notes.md"
         draft: false
-        prerelease: false
-        name: Build ${{ steps.getCurrentBuild.outputs.result }}
-        tag: ${{ steps.getCurrentBuild.outputs.result }}
+        prerelease: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+        name: Build ${{ steps.getCurrentBuild.outputs.number }} (${{ github.ref_name }})
+        tag: ${{ steps.getCurrentBuild.outputs.tag }}
         token: ${{ secrets.GITHUB_TOKEN }}
