@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - '**'
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/*.yml'
+      - '.gitignore'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+      - 'README.md'
+      - '.devcontainer/**'
+      - '.vscode/**'
 
 jobs:
   release:

@@ -1,0 +1,6 @@
+{
+    "[java]": {
+        "editor.defaultFormatter": "redhat.java"
+    },
+    "extensions.ignoreRecommendations": false
+}

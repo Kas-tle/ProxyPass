@@ -1,0 +1,8 @@
+{
+	"recommendations": [
+		"vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle",
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions"
+	]
+}
