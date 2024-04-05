@@ -24,12 +24,16 @@ repositories {
 }
 
 dependencies {
+    constraints {
+        implementation(libs.raknet)
+    }
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     compileOnly(libs.jsr305)
-    implementation(libs.bedrock.codec) { version { branch = "3.0-proxypass" } }
-    implementation(libs.bedrock.common) { version { branch = "3.0-proxypass" } }
-    implementation(libs.bedrock.connection) { version { branch = "3.0-proxypass" } }
+    implementation(libs.raknet) {}
+    implementation(libs.bedrock.codec) 
+    implementation(libs.bedrock.common)
+    implementation(libs.bedrock.connection) { exclude(group = "org.cloudburstmc.netty", module = "netty-transport-raknet") }
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.common)

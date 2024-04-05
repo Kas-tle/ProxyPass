@@ -214,6 +214,7 @@ public class ProxyPass {
                 .group(this.eventLoopGroup)
                 .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
                 .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
+                .option(RakChannelOption.RAK_COMPATIBILITY_MODE, true)
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
 
                     @Override
