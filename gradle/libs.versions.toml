@@ -10,7 +10,6 @@ jline-reader = { group = "org.jline", name = "jline-reader", version = "3.24.1" 
 jsr305 = { group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2" }
 minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "2.1.6" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.30" }
-raknet = { group = "org.cloudburstmc.netty", name = "transport-raknet", version = "1.0.0.CR2-COMPOSITE" }
 
 [plugins]
 shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
