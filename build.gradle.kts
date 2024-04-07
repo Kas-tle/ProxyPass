@@ -27,6 +27,7 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     compileOnly(libs.jsr305)
+    compileOnly(libs.checker.qual)
     implementation(libs.bedrock.codec) 
     implementation(libs.bedrock.common)
     implementation(libs.bedrock.connection)
