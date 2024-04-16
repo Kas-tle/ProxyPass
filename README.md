@@ -2,7 +2,7 @@
 
 ### Introduction
 
-ProxyPass allows developers to MITM a vanilla client and server without modifying them. This allows for easy testing of the Bedrock Edition protocol and observing vanilla network behavior. This fork of ProxyPass is designed to work in online mode. It also includes submodules of the Network and Protocol libraries, which have been modified to work with more servers than the original libraries. This setup is also more convenient for developers trying to debug these libraries.
+You can join the [Discord](https://discord.gg/5z4GuSnqmQ) for help with this fork. ProxyPass allows developers to MITM a vanilla client and server without modifying them. This allows for easy testing of the Bedrock Edition protocol and observing vanilla network behavior. This fork of ProxyPass is designed to work in online mode. It also includes submodules of the Network and Protocol libraries, which have been modified to work with more servers than the original libraries. This setup is also more convenient for developers trying to debug these libraries.
 
 ### Usage
 
