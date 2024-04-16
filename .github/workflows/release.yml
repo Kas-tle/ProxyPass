@@ -49,12 +49,13 @@ jobs:
           if-no-files-found: error
       - name: Make release
         id: release
-        uses: Kas-tle/base-release-action@95bf169cd0975b3fba91535309d416801aa97a38
+        uses: Kas-tle/base-release-action@b863fa0f89bd15267a96a72efb84aec25f168d4c
         with:
           files: |
             build/libs/ProxyPass.jar
           appID: ${{ secrets.RELEASE_APP_ID }}
           appPrivateKey: ${{ secrets.RELEASE_APP_PK }}
+          discordWebhook: ${{ secrets.DISCORD_WEBHOOK }}
 
   upload-logs:
     name: Upload Logs
