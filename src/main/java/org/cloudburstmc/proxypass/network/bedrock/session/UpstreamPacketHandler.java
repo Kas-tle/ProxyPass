@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import net.raphimc.minecraftauth.step.bedrock.StepMCChain.MCChain;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
@@ -108,7 +109,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
                 initializeOfflineProxySession();
             } else {
-                this.authData = new AuthData(account.mcChain().displayName(), account.mcChain().id(), account.mcChain().xuid());
+                MCChain mcChain = account.bedrockSession().getMcChain();
+                this.authData = new AuthData(mcChain.getDisplayName(), mcChain.getId(), mcChain.getXuid());
 
                 initializeOnlineProxySession();
             }
@@ -170,12 +172,13 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private void initializeOnlineProxySession() {
         log.debug("Initializing proxy session");
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
+            MCChain mcChain = account.bedrockSession().getMcChain();
             try {
                 if (mojangPublicKey == null) {
                     mojangPublicKey = ForgeryUtils.forgeMojangPublicKey();
                 }
                 if (onlineLoginChain == null) {
-                    onlineLoginChain = ForgeryUtils.forgeOnlineAuthData(account.mcChain(), mojangPublicKey);
+                    onlineLoginChain = ForgeryUtils.forgeOnlineAuthData(mcChain, mojangPublicKey);
                 }
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
@@ -190,7 +193,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 downstream, 
                 this.proxy, 
                 this.authData, 
-                new KeyPair(account.mcChain().publicKey(), account.mcChain().privateKey()));
+                new KeyPair(mcChain.getPublicKey(), mcChain.getPrivateKey()));
             this.player = proxySession;
 
             downstream.setPlayer(proxySession);

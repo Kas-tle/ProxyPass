@@ -2,6 +2,7 @@ package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
@@ -30,8 +31,14 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
 
     @Override
     public PacketSignal handle(NetworkSettingsPacket packet) {
-        this.session.setCompression(packet.getCompressionAlgorithm());
-        log.info("Compression algorithm picked {}", packet.getCompressionAlgorithm());
+        int threshold = packet.getCompressionThreshold();
+        if (threshold > 0) {
+            this.session.setCompression(packet.getCompressionAlgorithm());
+            log.info("Compression threshold set to {}", threshold);
+        } else {
+            this.session.setCompression(PacketCompressionAlgorithm.NONE);
+            log.info("Compression threshold set to 0");
+        }
 
         this.session.sendPacketImmediately(this.loginPacket);
         return PacketSignal.HANDLED;

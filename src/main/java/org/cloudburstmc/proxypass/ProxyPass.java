@@ -17,12 +17,10 @@ import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
-import net.raphimc.mcauth.MinecraftAuth;
-import net.raphimc.mcauth.step.bedrock.StepMCChain;
-import net.raphimc.mcauth.step.bedrock.StepPlayFabToken;
-import net.raphimc.mcauth.step.msa.StepMsaDeviceCode;
-import net.raphimc.mcauth.util.MicrosoftConstants;
-import org.apache.http.impl.client.CloseableHttpClient;
+import net.lenni0451.commons.httpclient.HttpClient;
+import net.raphimc.minecraftauth.MinecraftAuth;
+import net.raphimc.minecraftauth.step.bedrock.session.StepFullBedrockSession;
+import net.raphimc.minecraftauth.step.msa.StepMsaDeviceCode;
 import org.cloudburstmc.nbt.*;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
@@ -176,7 +174,7 @@ public class ProxyPass {
             log.info("Online mode is enabled. Starting auth process...");
             try {
                 account = getAuthenticatedAccount(saveAuthDetails);
-                log.info("Successfully logged in as {}", account.mcChain().displayName());
+                log.info("Successfully logged in as {}", account.bedrockSession().getMcChain().getDisplayName());
             } catch (Exception e) {
                 log.error("Setting to offline mode due to failure to get login chain:", e);
                 onlineMode = false;
@@ -339,34 +337,32 @@ public class ProxyPass {
 
     private Account getAuthenticatedAccount(boolean saveAuthDetails) throws Exception {
         Path authPath = Paths.get(".").resolve("auth.json");
-        CloseableHttpClient client = MicrosoftConstants.createHttpClient();
+        HttpClient client = MinecraftAuth.createHttpClient();
         Account account;
 
         if (Files.notExists(authPath) || !Files.isRegularFile(authPath) || !saveAuthDetails) {
-            StepMCChain.MCChain mcChain = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client,
+            StepFullBedrockSession.FullBedrockSession bedrockSession = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client,
                     new StepMsaDeviceCode.MsaDeviceCodeCallback(msaDeviceCode -> {
-                        log.info("Go to " + msaDeviceCode.verificationUri());
-                        log.info("Enter code " + msaDeviceCode.userCode());
+                        log.info("Go to " + msaDeviceCode.getVerificationUri());
+                        log.info("Enter code " + msaDeviceCode.getUserCode());
 
                         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                             try {
                                 Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                                clipboard.setContents(new StringSelection(msaDeviceCode.userCode()), null);
+                                clipboard.setContents(new StringSelection(msaDeviceCode.getUserCode()), null);
                                 log.info("Copied code to clipboard");
-                                Desktop.getDesktop().browse(new URI(msaDeviceCode.verificationUri()));
+                                Desktop.getDesktop().browse(new URI(msaDeviceCode.getVerificationUri()));
                             } catch (IOException | URISyntaxException e) {
                                 log.error("Failed to open browser", e);
                             }
                         }
                     }));
-            StepPlayFabToken.PlayFabToken playFabToken = MinecraftAuth.BEDROCK_PLAY_FAB_TOKEN.getFromInput(client, mcChain.prevResult().fullXblSession());
-            account = new Account(mcChain, playFabToken);
+            account = new Account(bedrockSession);
 
             if (saveAuthDetails) {
                 Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             }
 
-            client.close();
             return account;
         }
 
@@ -374,7 +370,6 @@ public class ProxyPass {
         account = new Account(JsonParser.parseString(accountString).getAsJsonObject());
         account.refresh(client);
         Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        client.close();
         return account;
     }
 }

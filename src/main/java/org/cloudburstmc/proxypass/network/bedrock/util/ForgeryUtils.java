@@ -1,7 +1,7 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import lombok.experimental.UtilityClass;
-import net.raphimc.mcauth.step.bedrock.StepMCChain;
+import net.raphimc.minecraftauth.step.bedrock.StepMCChain;
 import org.cloudburstmc.proxypass.network.bedrock.session.Account;
 import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
@@ -22,6 +22,8 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @UtilityClass
@@ -58,7 +60,7 @@ public class ForgeryUtils {
     }
 
     public static List<String> forgeOnlineAuthData(StepMCChain.MCChain mcChain, ECPublicKey mojangPublicKey) throws InvalidJwtException, JoseException {
-        String publicBase64Key = Base64.getEncoder().encodeToString(mcChain.publicKey().getEncoded());
+        String publicBase64Key = Base64.getEncoder().encodeToString(mcChain.getPublicKey().getEncoded());
 
         // adapted from https://github.com/RaphiMC/ViaBedrock/blob/a771149fe4492e4f1393cad66758313067840fcc/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
         JwtConsumer consumer = new JwtConsumerBuilder()
@@ -66,7 +68,7 @@ public class ForgeryUtils {
             .setVerificationKey(mojangPublicKey)
             .build();
 
-        JsonWebSignature mojangJws = (JsonWebSignature) consumer.process(mcChain.mojangJwt()).getJoseObjects().get(0);
+        JsonWebSignature mojangJws = (JsonWebSignature) consumer.process(mcChain.getMojangJwt()).getJoseObjects().get(0);
 
         JwtClaims claimsSet = new JwtClaims();
         claimsSet.setClaim("certificateAuthority", true);
@@ -76,13 +78,13 @@ public class ForgeryUtils {
 
         JsonWebSignature selfSignedJws = new JsonWebSignature();
         selfSignedJws.setPayload(claimsSet.toJson());
-        selfSignedJws.setKey(mcChain.privateKey());
+        selfSignedJws.setKey(mcChain.getPrivateKey());
         selfSignedJws.setAlgorithmHeaderValue("ES384");
         selfSignedJws.setHeader(HeaderParameterNames.X509_URL, publicBase64Key);
         
         String selfSignedJwt = selfSignedJws.getCompactSerialization();
 
-        return new ArrayList<>(List.of(selfSignedJwt, mcChain.mojangJwt(), mcChain.identityJwt()));
+        return new ArrayList<>(List.of(selfSignedJwt, mcChain.getMojangJwt(), mcChain.getIdentityJwt()));
     }
 
     public static String forgeOfflineSkinData(KeyPair pair, JSONObject skinData) {
@@ -103,12 +105,13 @@ public class ForgeryUtils {
 
     @SuppressWarnings("unchecked")
     public static String forgeOnlineSkinData(Account account, JSONObject skinData, String serverAddress) {
-        String publicKeyBase64 = Base64.getEncoder().encodeToString(account.mcChain().publicKey().getEncoded());
+        String publicKeyBase64 = Base64.getEncoder().encodeToString(account.bedrockSession().getMcChain().getPublicKey().getEncoded());
 
         HashMap<String,Object> overrideData = new HashMap<String,Object>();
-        overrideData.put("PlayFabId", account.playFabToken().playFabId());
-        overrideData.put("DeviceId", account.mcChain().prevResult().initialXblSession().prevResult2().id());
-        overrideData.put("ThirdPartyName", account.mcChain().displayName());
+        overrideData.put("PlayFabId", account.bedrockSession().getPlayFabToken().getPlayFabId().toLowerCase(Locale.ROOT));
+        overrideData.put("DeviceId", UUID.randomUUID().toString());
+        overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
+        overrideData.put("ThirdPartyName", account.bedrockSession().getMcChain().getDisplayName());
         overrideData.put("ServerAddress", serverAddress);
 
         skinData.putAll(overrideData);
@@ -117,7 +120,7 @@ public class ForgeryUtils {
         jws.setAlgorithmHeaderValue("ES384");
         jws.setHeader(HeaderParameterNames.X509_URL, publicKeyBase64);
         jws.setPayload(skinData.toJSONString());
-        jws.setKey(account.mcChain().privateKey());
+        jws.setKey(account.bedrockSession().getMcChain().getPrivateKey());
 
         try {
             return jws.getCompactSerialization();
