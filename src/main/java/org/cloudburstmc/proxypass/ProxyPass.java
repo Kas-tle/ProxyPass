@@ -24,6 +24,7 @@ import net.raphimc.minecraftauth.step.msa.StepMsaDeviceCode;
 import org.cloudburstmc.nbt.*;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
+import org.cloudburstmc.netty.handler.codec.raknet.server.RakServerRateLimiter;
 import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
@@ -215,6 +216,7 @@ public class ProxyPass {
                 .bind(this.proxyAddress)
                 .awaitUninterruptibly()
                 .channel();
+        this.server.pipeline().remove(RakServerRateLimiter.NAME);
         log.info("Bedrock server started on {}", proxyAddress);
 
         loop();
@@ -226,6 +228,7 @@ public class ProxyPass {
                 .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
                 .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
                 .option(RakChannelOption.RAK_COMPATIBILITY_MODE, true)
+                .option(RakChannelOption.RAK_MTU, 1492)
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
 
                     @Override
