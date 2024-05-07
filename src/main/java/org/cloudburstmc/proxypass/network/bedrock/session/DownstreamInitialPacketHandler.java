@@ -41,6 +41,7 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
         }
 
         this.session.sendPacketImmediately(this.loginPacket);
+        this.player.logger.logPacket(this.session, this.loginPacket, true);
         return PacketSignal.HANDLED;
     }
 
@@ -60,6 +61,7 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
 
         ClientToServerHandshakePacket clientToServerHandshake = new ClientToServerHandshakePacket();
         session.sendPacketImmediately(clientToServerHandshake);
+        this.player.logger.logPacket(this.session, clientToServerHandshake, true);
 
 
         this.session.setPacketHandler(new DownstreamPacketHandler(this.session, this.player, this.proxy));

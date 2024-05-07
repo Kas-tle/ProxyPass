@@ -164,6 +164,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
             packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
             downstream.sendPacketImmediately(packet);
+            this.player.logger.logPacket(this.session, packet, true);
 
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
@@ -218,6 +219,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
             packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
             downstream.sendPacketImmediately(packet);
+            this.player.logger.logPacket(this.session, packet, true);
 
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
