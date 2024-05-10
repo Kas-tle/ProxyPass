@@ -200,7 +200,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setPlayer(proxySession);
             this.session.setPlayer(proxySession);
 
-            String skinData = ForgeryUtils.forgeOnlineSkinData(account, this.skinData, this.proxy.getTargetAddress().getHostString());
+            String skinData = ForgeryUtils.forgeOnlineSkinData(account, this.skinData, this.proxy.getTargetAddress());
 
             try {
                 player.getLogger().saveJson("skinData", this.skinData);

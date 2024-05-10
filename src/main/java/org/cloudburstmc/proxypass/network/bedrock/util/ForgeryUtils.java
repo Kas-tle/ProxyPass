@@ -13,6 +13,7 @@ import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.jwx.HeaderParameterNames;
 import org.jose4j.lang.JoseException;
 
+import java.net.InetSocketAddress;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.interfaces.ECPublicKey;
@@ -104,7 +105,7 @@ public class ForgeryUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static String forgeOnlineSkinData(Account account, JSONObject skinData, String serverAddress) {
+    public static String forgeOnlineSkinData(Account account, JSONObject skinData, InetSocketAddress serverAddress) {
         String publicKeyBase64 = Base64.getEncoder().encodeToString(account.bedrockSession().getMcChain().getPublicKey().getEncoded());
 
         HashMap<String,Object> overrideData = new HashMap<String,Object>();
@@ -112,7 +113,7 @@ public class ForgeryUtils {
         overrideData.put("DeviceId", UUID.randomUUID().toString());
         overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
         overrideData.put("ThirdPartyName", account.bedrockSession().getMcChain().getDisplayName());
-        overrideData.put("ServerAddress", serverAddress);
+        overrideData.put("ServerAddress", serverAddress.getHostString() + ":" + String.valueOf(serverAddress.getPort()));
 
         skinData.putAll(overrideData);
 
