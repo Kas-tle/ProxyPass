@@ -228,6 +228,9 @@ public class ProxyPass {
                 .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
                 .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
                 .option(RakChannelOption.RAK_COMPATIBILITY_MODE, true)
+                .option(RakChannelOption.RAK_IP_DONT_FRAGMENT, true)
+                .option(RakChannelOption.RAK_MTU_SIZES, new Integer[]{1492, 1200, 576})
+                .option(RakChannelOption.RAK_CLIENT_INTERNAL_ADDRESSES, 20)
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
 
                     @Override
