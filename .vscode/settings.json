@@ -3,6 +3,5 @@
         "editor.defaultFormatter": "redhat.java"
     },
     "extensions.ignoreRecommendations": false,
-    "java.gradle.buildServer.enabled": "off",
     "java.configuration.updateBuildConfiguration": "interactive"
 }
