@@ -3,7 +3,8 @@
 	"image": "mcr.microsoft.com/devcontainers/java:1-17-buster",
 	"features": {
 		"ghcr.io/devcontainers/features/java:1": {
-			"version": "none",
+			"version": "17",
+			"additionalVersions": "8",
 			"installMaven": "false",
 			"installGradle": "true"
 		}
