@@ -232,6 +232,8 @@ public class ProxyPass {
                 .option(RakChannelOption.RAK_IP_DONT_FRAGMENT, true)
                 .option(RakChannelOption.RAK_MTU_SIZES, new Integer[]{1492, 1200, 576})
                 .option(RakChannelOption.RAK_CLIENT_INTERNAL_ADDRESSES, 20)
+                .option(RakChannelOption.RAK_TIME_BETWEEN_SEND_CONNECTION_ATTEMPTS_MS, 500)
+                .option(RakChannelOption.RAK_CLIENT_BEDROCK_PROTOCOL_VERSION, PROTOCOL_VERSION)
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
 
                     @Override
