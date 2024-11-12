@@ -4,5 +4,5 @@
 	branch = 3.0-proxypass
 [submodule "network"]
 	path = network
-	url = https://github.com/Kas-tle/Network.git
-	branch = feature/compatibility-mode
+	url = https://github.com/Kas-tle/NetworkCompatible.git
+	branch = master
