@@ -168,7 +168,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Override
     public PacketSignal handle(CreativeContentPacket packet) {
         try {
-            dumpCreativeItems(packet.getContents());
+            // TODO: Handle new CreativeContentPacket
+            // dumpCreativeItems(packet.getContents());
         } catch (Exception e) {
             log.error("Failed to dump creative contents", e);
         }
