@@ -11,6 +11,9 @@ jsr305 = { group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2
 minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "4.1.1" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.30" }
 checker-qual = { group = "org.checkerframework", name = "checker-qual", version = "3.37.0" }
+richtextfx = { group = "org.fxmisc.richtext", name = "richtextfx", version = "0.11.4" }
+atlantafx = { group = "io.github.mkpaz", name = "atlantafx-base", version = "2.0.1" }
 
 [plugins]
 shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+javafxplugin = { id = "org.openjfx.javafxplugin", version = "0.1.0" }

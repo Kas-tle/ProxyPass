@@ -40,6 +40,7 @@ import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
+import org.cloudburstmc.proxypass.ui.PacketInspector;
 
 import java.awt.Desktop;
 import java.awt.Toolkit;
@@ -150,6 +151,13 @@ public class ProxyPass {
         }
 
         configuration = Configuration.load(configPath);
+
+        if (configuration.isEnableUi()) {
+            log.info("Starting Packet Inspector UI...");
+            PacketInspector.launchUI();
+            // No need to store a reference since we'll use static methods
+            log.info("Packet Inspector UI started");
+        }
 
         proxyAddress = configuration.getProxy().getAddress();
         targetAddress = configuration.getDestination().getAddress();

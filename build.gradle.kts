@@ -8,12 +8,18 @@ plugins {
     id("java")
     id("application")
     alias(libs.plugins.shadow)
+    alias(libs.plugins.javafxplugin)
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
+}
+
+javafx {
+    version = "21.0.6"
+    modules("javafx.controls", "javafx.fxml")
 }
 
 repositories {
@@ -37,6 +43,8 @@ dependencies {
     implementation(libs.jansi)
     implementation(libs.jline.reader)
     implementation(libs.minecraftauth)
+    implementation(libs.richtextfx)
+    implementation(libs.atlantafx)
 }
 
 application {
