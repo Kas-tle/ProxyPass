@@ -35,7 +35,7 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
-        player.logger.logPacket(this, packet, false);
+        player.logger.logPacket(this, wrapper, false);
         if (proxyPass.getConfiguration().isPacketTesting()) {
             TestUtils.testPacket(this, wrapper);
         }

@@ -3,10 +3,15 @@ package org.cloudburstmc.proxypass.network.bedrock.logging;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
+import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.ui.PacketInspector;
 import org.jose4j.json.internal.json_simple.JSONObject;
 
 import javax.imageio.ImageIO;
@@ -108,6 +113,60 @@ public class SessionLogger {
 
             if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
                 System.out.println(logMessage);
+            }
+
+            if (proxy.getConfiguration().isEnableUi()) {
+                // Get the raw packet data
+                ByteBuf buffer = ByteBufAllocator.DEFAULT.ioBuffer();
+                try {
+                    BedrockCodecHelper helper = session.getPeer().getCodecHelper();
+                    ProxyPass.CODEC.tryEncode(helper, buffer, packet);
+                    byte[] data = new byte[buffer.readableBytes()];
+                    buffer.getBytes(buffer.readerIndex(), data);
+                    
+                    // Send to the packet inspector with the original packet
+                    PacketInspector.addPacket(packet, data, !upstream, 
+                            session.getSocketAddress().toString());
+                } catch (Exception e) {
+                    log.debug("Failed to capture packet for UI", e);
+                } finally {
+                    buffer.release();
+                }
+            }
+        }
+    }
+
+    public void logPacket(BedrockSession session, BedrockPacketWrapper wrapper, boolean upstream) {
+        BedrockPacket packet = wrapper.getPacket();
+        if (!proxy.isIgnoredPacket(packet.getClass())) {
+            if (session.isLogging() && log.isTraceEnabled()) {
+                log.trace("{} {}: {}", getLogPrefix(upstream), session.getSocketAddress(), packet);
+            }
+
+            String logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), getLogPrefix(upstream), packet);
+            if (proxy.getConfiguration().isLoggingPackets()) {
+                logToBuffer(() -> logMessage);
+            }
+
+            if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
+                System.out.println(logMessage);
+            }
+        }
+
+        if (proxy.getConfiguration().isEnableUi()) {
+            ByteBuf packetBuffer = wrapper.getPacketBuffer().slice();
+            packetBuffer.skipBytes(wrapper.getHeaderLength()); // skip header
+            ByteBuf buffer = packetBuffer.alloc().ioBuffer();
+            try {
+                buffer.writeInt(wrapper.getPacketId()); // packet ID
+                buffer.writeBytes(packetBuffer);
+                byte[] data = new byte[buffer.readableBytes()];
+                buffer.getBytes(buffer.readerIndex(), data);
+                PacketInspector.addPacket(packet, data, !upstream, session.getSocketAddress().toString());
+            } catch (Exception e) {
+                log.debug("Failed to capture packet for UI", e);
+            } finally {
+                buffer.release();
             }
         }
     }
