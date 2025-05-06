@@ -1,11 +1,13 @@
 package org.cloudburstmc.proxypass;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
@@ -29,11 +31,14 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
-import org.cloudburstmc.protocol.bedrock.codec.v786.Bedrock_v786;
+import org.cloudburstmc.protocol.bedrock.codec.v800.Bedrock_v800;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.session.Account;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
@@ -42,6 +47,7 @@ import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistr
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.ui.PacketInspector;
 
+import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
@@ -63,10 +69,14 @@ import java.util.function.Consumer;
 @Getter
 public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER;
+    private static final SimpleModule MODULE = new SimpleModule("ProxyPass", Version.unknownVersion())
+            .addSerializer(Color.class, new ColorSerializer())
+            .addDeserializer(Color.class, new ColorDeserializer())
+            .addSerializer(NbtBlockDefinitionRegistry.NbtBlockDefinition.class, new NbtDefinitionSerializer());
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockCodecHelper HELPER = Bedrock_v786.CODEC.createHelper();
-    public static final BedrockCodec CODEC = Bedrock_v786.CODEC
+    public static final BedrockCodecHelper HELPER = Bedrock_v800.CODEC.createHelper();
+    public static final BedrockCodec CODEC = Bedrock_v800.CODEC
         .toBuilder().helper(() -> HELPER).build();
         
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
@@ -101,7 +111,7 @@ public class ProxyPass {
         PRETTY_PRINTER.indentArraysWith(indenter);
         PRETTY_PRINTER.indentObjectsWith(indenter);
 
-        JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
+        JSON_MAPPER = new ObjectMapper().registerModule(MODULE).disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
         MINECRAFT_VERSION = CODEC.getMinecraftVersion();
 
         HELPER.setEncodingSettings(EncodingSettings.builder()
@@ -347,7 +357,7 @@ public class ProxyPass {
     public void saveMojangson(String name, NbtMap nbt) {
         Path outPath = dataDir.resolve(name);
         try {
-            Files.write(outPath, nbt.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+            Files.writeString(outPath, nbt.toString(), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
