@@ -32,6 +32,9 @@ import org.cloudburstmc.proxypass.network.bedrock.util.RecipeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -197,6 +200,37 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         this.session.getPeer().getCodecHelper().setCameraPresetDefinitions(cameraDefinitions);
         player.getUpstream().getPeer().getCodecHelper().setCameraPresetDefinitions(cameraDefinitions);
         return PacketSignal.UNHANDLED;
+    }
+
+    @Override
+    public PacketSignal handle(TransferPacket packet) {
+        if (!this.proxy.getConfiguration().isFollowTransfers()) {
+            return PacketSignal.UNHANDLED;
+        }
+
+        InetSocketAddress address = new InetSocketAddress(packet.getAddress(), packet.getPort());
+        this.proxy.setTargetAddress(address);
+
+        log.info("Transfer to {}:{}", packet.getAddress(), packet.getPort());
+
+        // Simulate transfer by sending the player back to us
+        TransferPacket transferPacket = new TransferPacket();
+        URI uri;
+        try {
+            uri = new URI(null, player.getUpstream().getConnectedViaAddress(), null, null).parseServerAuthority();
+            transferPacket.setAddress(uri.getHost());
+            transferPacket.setPort(uri.getPort());
+        } catch (URISyntaxException e) {
+            transferPacket.setAddress(proxy.getProxyAddress().getHostString());
+            transferPacket.setPort(proxy.getProxyAddress().getPort());
+        }
+
+        transferPacket.setReloadWorld(packet.isReloadWorld());
+        this.player.getUpstream().sendPacketImmediately(transferPacket);
+
+        this.session.disconnect();
+
+        return PacketSignal.HANDLED;
     }
 
     private void dumpCreativeItems(List<CreativeItemGroup> groups, List<CreativeItemData> contents) {
