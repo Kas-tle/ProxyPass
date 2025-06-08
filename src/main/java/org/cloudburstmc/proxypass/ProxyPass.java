@@ -18,6 +18,7 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.raphimc.minecraftauth.MinecraftAuth;
@@ -133,6 +134,7 @@ public class ProxyPass {
     private int maxClients = 0;
     private boolean onlineMode = false;
     private boolean saveAuthDetails = false;
+    @Setter
     private InetSocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;

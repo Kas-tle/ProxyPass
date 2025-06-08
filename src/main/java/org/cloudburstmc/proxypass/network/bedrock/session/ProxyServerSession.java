@@ -24,6 +24,8 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     private BedrockSession sendSession;
     @Setter
     private ProxyPlayerSession player;
+    @Setter
+    private String connectedViaAddress;
 
     public ProxyServerSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);

@@ -102,6 +102,10 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             skinData = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
 
+            if (skinData.get("ServerAddress") != null) {
+                session.setConnectedViaAddress(skinData.get("ServerAddress").toString());
+            }
+
             if (account == null) {
                 this.authData = new AuthData(chain.identityClaims().extraData.displayName,
                     chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
@@ -223,5 +227,12 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
+    }
+
+    @Override
+    public void onDisconnect(String reason) {
+        if (this.session.getSendSession().isConnected()) {
+            this.session.getSendSession().disconnect(reason);
+        }
     }
 }

@@ -37,6 +37,8 @@ public class Configuration {
     private LogTo logTo = LogTo.FILE;
     @JsonProperty("enable-ui")
     private boolean enableUi = false;
+    @JsonProperty("follow-transfers")
+    private boolean followTransfers = true;
 
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
