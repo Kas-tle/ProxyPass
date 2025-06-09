@@ -51,9 +51,9 @@ public class SessionLogger {
 
     private final Deque<String> logBuffer = new ArrayDeque<>();
 
-    public SessionLogger(ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
+    public SessionLogger(ProxyPass proxy, Path dataPath) {
         this.proxy = proxy;
-        this.dataPath = sessionsDir.resolve(displayName + '-' + timestamp);
+        this.dataPath = dataPath;
         this.logPath = dataPath.resolve("packets.log");
     }
 

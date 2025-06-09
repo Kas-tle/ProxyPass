@@ -39,6 +39,8 @@ public class Configuration {
     private boolean enableUi = false;
     @JsonProperty("follow-transfers")
     private boolean followTransfers = true;
+    @JsonProperty("download-packs")
+    private boolean downloadPacks = true;
 
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();

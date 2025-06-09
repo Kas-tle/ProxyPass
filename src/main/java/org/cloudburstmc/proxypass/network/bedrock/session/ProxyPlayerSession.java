@@ -6,6 +6,7 @@ import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
 
+import java.nio.file.Path;
 import java.security.KeyPair;
 
 @Log4j2
@@ -18,6 +19,8 @@ public class ProxyPlayerSession {
     private final long timestamp = System.currentTimeMillis();
     @Getter(AccessLevel.PACKAGE)
     private final KeyPair proxyKeyPair;
+    private final Path dataPath;
+    private final PackDownloader packDownloader;
     private volatile boolean closed = false;
 
     public final SessionLogger logger;
@@ -28,16 +31,16 @@ public class ProxyPlayerSession {
         this.proxy = proxy;
         this.authData = authData;
         this.proxyKeyPair = proxyKeyPair;
+        this.dataPath = proxy.getSessionsDir().resolve(this.authData.getDisplayName() + '-' + timestamp);
 //        this.upstream.addDisconnectHandler(reason -> {
 //            if (reason != DisconnectReason.DISCONNECTED) {
 //                this.downstream.disconnect();
 //            }
 //        });
+        this.packDownloader = new PackDownloader(this.dataPath);
         this.logger = new SessionLogger(
                 proxy,
-                proxy.getSessionsDir(),
-                this.authData.getDisplayName(),
-                timestamp
+                this.dataPath
         );
         logger.start();
     }
