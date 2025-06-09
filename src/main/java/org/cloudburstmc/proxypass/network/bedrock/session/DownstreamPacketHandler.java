@@ -233,6 +233,26 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.HANDLED;
     }
 
+    @Override
+    public PacketSignal handle(ResourcePacksInfoPacket packet) {
+        if (!this.proxy.getConfiguration().isDownloadPacks()) {
+            return PacketSignal.UNHANDLED;
+        }
+        for (ResourcePacksInfoPacket.Entry entry : packet.getResourcePackInfos()) {
+            player.getPackDownloader().registerPack(entry.getPackId(), entry.getCdnUrl(), entry.getContentKey());
+        }
+        return PacketSignal.UNHANDLED;
+    }
+
+    @Override
+    public PacketSignal handle(ResourcePackChunkDataPacket packet) {
+        if (!this.proxy.getConfiguration().isDownloadPacks()) {
+            return PacketSignal.UNHANDLED;
+        }
+        player.getPackDownloader().addChunk(packet.getPackId(), packet.getChunkIndex(), packet.getData().retain());
+        return PacketSignal.UNHANDLED;
+    }
+
     private void dumpCreativeItems(List<CreativeItemGroup> groups, List<CreativeItemData> contents) {
         List<CreativeGroup> groupEntries = new ArrayList<>();
         for (CreativeItemGroup group : groups) {

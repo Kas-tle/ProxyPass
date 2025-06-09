@@ -11,6 +11,7 @@ import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.bedrock.packet.NetworkSettingsPacket;
 import org.cloudburstmc.protocol.bedrock.packet.PlayStatusPacket;
 import org.cloudburstmc.protocol.bedrock.packet.RequestNetworkSettingsPacket;
+import org.cloudburstmc.protocol.bedrock.packet.ResourcePackClientResponsePacket;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
@@ -123,6 +124,20 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             throw new RuntimeException("Unable to complete login", e);
         }
         return PacketSignal.HANDLED;
+    }
+
+    @Override
+    public PacketSignal handle(ResourcePackClientResponsePacket packet) {
+        if (!this.proxy.getConfiguration().isDownloadPacks()) {
+            return PacketSignal.UNHANDLED;
+        }
+        if (packet.getStatus() != ResourcePackClientResponsePacket.Status.COMPLETED) {
+            return PacketSignal.UNHANDLED;
+        };
+
+        player.getPackDownloader().processPacks();
+
+        return PacketSignal.UNHANDLED;
     }
 
     private void initializeOfflineProxySession() {

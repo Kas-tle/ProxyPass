@@ -20,6 +20,12 @@ log-packets: true
 ## Where to log packet data
 ## Valid options: console, file or both
 log-to: file
+## If ProxyPass should follow transfer packets.
+folow-transfers: true
+## If ProxyPass should download packs from the destination server.
+## This will only download packs if the client has not downloaded them yet.
+download-packs: true
+
 
 ## Packets to ignore to make your log more refined. These default packet are generally spammed
 ignored-packets:
