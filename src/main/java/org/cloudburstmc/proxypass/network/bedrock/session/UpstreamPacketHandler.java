@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.raphimc.minecraftauth.step.bedrock.StepMCChain.MCChain;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
+import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
+import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.bedrock.packet.NetworkSettingsPacket;
@@ -81,7 +83,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     @Override
     public PacketSignal handle(LoginPacket packet) {
         try {
-            ChainValidationResult chain = EncryptionUtils.validateChain(packet.getChain());
+            ChainValidationResult chain = EncryptionUtils.validatePayload(packet.getAuthPayload());
 
             JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
 
@@ -96,7 +98,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
             ECPublicKey identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
 
-            String clientJwt = packet.getExtra();
+            String clientJwt = packet.getClientJwt();
             verifyJwt(clientJwt, identityPublicKey);
             JsonWebSignature jws = new JsonWebSignature();
             jws.setCompactSerialization(clientJwt);
@@ -110,7 +112,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             if (account == null) {
                 this.authData = new AuthData(chain.identityClaims().extraData.displayName,
                     chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
-                chainData = packet.getChain();
+                chainData = ((CertificateChainPayload) packet.getAuthPayload()).getChain();
 
                 initializeOfflineProxySession();
             } else {
@@ -173,8 +175,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             chainData.add(authData);
 
             LoginPacket login = new LoginPacket();
-            login.getChain().addAll(chainData);
-            login.setExtra(skinData);
+            login.setClientJwt(skinData);
+            login.setAuthPayload(new CertificateChainPayload(chainData, AuthType.FULL));
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
             downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
@@ -228,8 +230,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
 
             LoginPacket login = new LoginPacket();
-            login.getChain().addAll(onlineLoginChain);
-            login.setExtra(skinData);
+            login.setClientJwt(skinData);
+            login.setAuthPayload(new CertificateChainPayload(onlineLoginChain, AuthType.FULL));
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
             downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
