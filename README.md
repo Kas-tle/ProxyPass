@@ -25,6 +25,7 @@ proxy:
   host: 127.0.0.1
   port: 19122
 ## Destination server which the client will connect to.
+## You are only able to join offline mode servers
 destination:
   host: 127.0.0.1
   port: 19132
@@ -41,6 +42,12 @@ log-packets: true
 ## Where to log packet data
 ## Valid options: console, file or both
 log-to: file
+## If ProxyPass should follow transfer packets.
+follow-transfers: true
+## If ProxyPass should download packs from the destination server.
+## This will only download packs if the client has not downloaded them yet.
+download-packs: true
+
 
 ## Packets to ignore to make your log more refined. These default packet are generally spammed
 ignored-packets:
