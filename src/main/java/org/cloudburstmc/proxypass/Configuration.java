@@ -42,6 +42,8 @@ public class Configuration {
     @JsonProperty("download-packs")
     private boolean downloadPacks = true;
 
+    @JsonProperty("invert-ignored-list")
+    private boolean invertIgnoredList = false;
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
 

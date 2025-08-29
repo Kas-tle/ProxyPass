@@ -366,7 +366,7 @@ public class ProxyPass {
     }
 
     public boolean isIgnoredPacket(Class<?> clazz) {
-        return this.ignoredPackets.contains(clazz);
+        return this.configuration.isInvertIgnoredList() != this.ignoredPackets.contains(clazz);
     }
 
     public boolean isFull() {

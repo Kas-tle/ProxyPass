@@ -48,7 +48,8 @@ follow-transfers: true
 ## This will only download packs if the client has not downloaded them yet.
 download-packs: true
 
-
+## Inverts the list below
+invert-ignored-list: false
 ## Packets to ignore to make your log more refined. These default packet are generally spammed
 ignored-packets:
   - "NetworkStackLatencyPacket"
