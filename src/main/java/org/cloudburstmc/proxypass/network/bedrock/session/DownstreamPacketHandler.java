@@ -73,16 +73,15 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 String id = entry.getKey();
                 BiomeDefinitionData data = entry.getValue();
 
-                strippedDefinitions.put(id, new BiomeDefinitionData(data.getId(), data.getTemperature(),
-                        data.getDownfall(), data.getRedSporeDensity(), data.getBlueSporeDensity(), data.getAshDensity(),
-                        data.getWhiteAshDensity(), data.getDepth(), data.getScale(), data.getMapWaterColor(),
-                        data.isRain(), data.getTags(), null));
+                strippedDefinitions.put(id,
+                        new BiomeDefinitionData(data.getId(), data.getTemperature(), data.getDownfall(),
+                                data.getFoliageSnow(), data.getDepth(), data.getScale(), data.getMapWaterColor(),
+                                data.isRain(), data.getTags(), null));
             }
             proxy.saveJson("stripped_biome_definitions.json", strippedDefinitions);
         }
         return PacketSignal.UNHANDLED;
     }
-
 
     @Override
     public PacketSignal handle(StartGamePacket packet) {
@@ -111,7 +110,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 ProxyPass.legacyIdMap.put(entry.getRuntimeId(), entry.getIdentifier());
             }
 
-            SimpleDefinitionRegistry<ItemDefinition> itemDefinitions = SimpleDefinitionRegistry.<ItemDefinition>builder()
+            SimpleDefinitionRegistry<ItemDefinition> itemDefinitions = SimpleDefinitionRegistry
+                    .<ItemDefinition>builder()
                     .addAll(packet.getItemDefinitions())
                     .add(new SimpleItemDefinition("minecraft:empty", 0, false))
                     .build();
@@ -126,7 +126,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             proxy.saveJson("runtime_item_states.json", itemData);
         }
 
-
         DefinitionRegistry<BlockDefinition> registry;
         if (packet.isBlockNetworkIdsHashed()) {
             registry = this.proxy.getBlockDefinitionsHashed();
@@ -140,20 +139,21 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
-        @Override
+    @Override
     public PacketSignal handle(ItemComponentPacket packet) {
         List<DataEntry> itemData = new ArrayList<>();
 
         NbtMapBuilder root = NbtMap.builder();
         for (var item : packet.getItems()) {
             root.putCompound(item.getIdentifier(), item.getComponentData());
-            itemData.add(new DataEntry(item.getIdentifier(), item.getRuntimeId(), item.getVersion().ordinal(), item.isComponentBased()));
+            itemData.add(new DataEntry(item.getIdentifier(), item.getRuntimeId(), item.getVersion().ordinal(),
+                    item.isComponentBased()));
         }
 
         if (ProxyPass.CODEC.getProtocolVersion() >= 776) {
-            SimpleDefinitionRegistry.Builder<ItemDefinition> builder = SimpleDefinitionRegistry.<ItemDefinition>builder()
+            SimpleDefinitionRegistry.Builder<ItemDefinition> builder = SimpleDefinitionRegistry
+                    .<ItemDefinition>builder()
                     .add(new SimpleItemDefinition("minecraft:empty", 0, false));
-
 
             for (DataEntry entry : itemData) {
                 ProxyPass.legacyIdMap.put(entry.getId(), entry.getName());
@@ -171,7 +171,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
         proxy.saveCompressedNBT("item_components", root.build());
 
-
         return PacketSignal.UNHANDLED;
     }
 
@@ -188,14 +187,13 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
-
     @Override
     public PacketSignal handle(CameraPresetsPacket packet) {
         DefinitionRegistry<NamedDefinition> cameraDefinitions = SimpleDefinitionRegistry.<NamedDefinition>builder()
                 .addAll(IntStream.range(0, packet.getPresets().size())
-                .mapToObj(i -> CameraPresetDefinition.fromCameraPreset(packet.getPresets().get(i), i))
-                .collect(Collectors.toList()))
-        .build();
+                        .mapToObj(i -> CameraPresetDefinition.fromCameraPreset(packet.getPresets().get(i), i))
+                        .collect(Collectors.toList()))
+                .build();
 
         this.session.getPeer().getCodecHelper().setCameraPresetDefinitions(cameraDefinitions);
         player.getUpstream().getPeer().getCodecHelper().setCameraPresetDefinitions(cameraDefinitions);
@@ -303,7 +301,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     private CreativeItemEntry createCreativeItemEntry(ItemData data, int groupId) {
         ItemEntry entry = createCreativeItemEntry(data);
-        return new CreativeItemEntry(entry.getId(), entry.getDamage(), entry.getBlockRuntimeId(), entry.getBlockTag(), entry.getNbt(), groupId);
+        return new CreativeItemEntry(entry.getId(), entry.getDamage(), entry.getBlockRuntimeId(), entry.getBlockTag(),
+                entry.getNbt(), groupId);
     }
 
     private ItemEntry createCreativeItemEntry(ItemData data) {
@@ -358,7 +357,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     private static String encodeNbtToString(NbtMap tag) {
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-             NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
+                NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
             stream.writeTag(tag);
             return Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
         } catch (IOException e) {
@@ -371,7 +370,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private static class CreativeItemEntry extends ItemEntry {
         private final int groupId;
 
-        public CreativeItemEntry(String id, Integer damage, Integer blockRuntimeId, String blockTag, String nbt, int groupId) {
+        public CreativeItemEntry(String id, Integer damage, Integer blockRuntimeId, String blockTag, String nbt,
+                int groupId) {
             super(id, damage, blockRuntimeId, blockTag, nbt);
             this.groupId = groupId;
         }
@@ -394,7 +394,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         List<LegacyCreativeItemEntry> items;
     }
 
-    
     @Data
     @AllArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
