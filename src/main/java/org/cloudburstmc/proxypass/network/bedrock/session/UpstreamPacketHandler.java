@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import net.kyori.adventure.text.Component;
 import net.raphimc.minecraftauth.step.bedrock.StepMCChain.MCChain;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
@@ -123,7 +122,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 initializeOnlineProxySession();
             }
         } catch (Exception e) {
-            session.disconnect(Component.text("disconnectionScreen.internalError.cantConnect"));
+            session.disconnect("disconnectionScreen.internalError.cantConnect");
             throw new RuntimeException("Unable to complete login", e);
         }
         return PacketSignal.HANDLED;
@@ -248,7 +247,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Override
-    public void onDisconnect(Component reason) {
+    public void onDisconnect(CharSequence reason) {
         if (this.session.getSendSession().isConnected()) {
             this.session.getSendSession().disconnect(reason);
         }
