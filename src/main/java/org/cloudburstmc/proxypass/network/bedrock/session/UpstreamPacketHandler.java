@@ -87,16 +87,15 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
 
-            if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
-                throw new RuntimeException("AuthData was not found!");
-            }
+            ECPublicKey identityPublicKey;
 
-            extraData = new JSONObject(JsonUtils.childAsType(chain.rawIdentityClaims(), "extraData", Map.class));
-
-            if (payload.get("identityPublicKey").getNodeType() != JsonNodeType.STRING) {
+            if (chain.identityClaims().identityPublicKey != null) {
+                identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
+            } else if (payload.get("identityPublicKey") != null && payload.get("identityPublicKey").getNodeType() == JsonNodeType.STRING) {
+                identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
+            } else {
                 throw new RuntimeException("Identity Public Key was not found!");
             }
-            ECPublicKey identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
 
             String clientJwt = packet.getClientJwt();
             verifyJwt(clientJwt, identityPublicKey);
@@ -110,6 +109,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
 
             if (account == null) {
+                if (payload.get("extraData") == null) {
+                    throw new RuntimeException("New R21U9 login for offline mode is not yet supported!");
+                }
+
+                if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
+                    throw new RuntimeException("AuthData was not found!");
+                }
+
+                extraData = new JSONObject(JsonUtils.childAsType(chain.rawIdentityClaims(), "extraData", Map.class));
+
                 this.authData = new AuthData(chain.identityClaims().extraData.displayName,
                     chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
                 chainData = ((CertificateChainPayload) packet.getAuthPayload()).getChain();
