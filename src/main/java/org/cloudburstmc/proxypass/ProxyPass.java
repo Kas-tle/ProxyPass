@@ -32,11 +32,19 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockPacketSerializer;
+import org.cloudburstmc.protocol.bedrock.codec.v818.serializer.LoginSerializer_v818;
 import org.cloudburstmc.protocol.bedrock.codec.v859.Bedrock_v859;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
+import org.cloudburstmc.protocol.bedrock.data.auth.AuthPayload;
+import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
+import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
+import org.cloudburstmc.protocol.bedrock.data.auth.TokenPayload;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
+import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.protocol.common.util.Preconditions;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
@@ -47,6 +55,8 @@ import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.ui.PacketInspector;
+import org.jose4j.json.JsonUtil;
+import org.jose4j.lang.JoseException;
 
 import java.awt.Color;
 import java.awt.Desktop;
@@ -77,6 +87,36 @@ public class ProxyPass {
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
     public static final BedrockCodecHelper HELPER = Bedrock_v859.CODEC.createHelper();
+    public static final BedrockPacketSerializer<LoginPacket> CERTIFICATE_PRIORITY_SERIALIZER = new LoginSerializer_v818() {
+        @Override
+        protected AuthPayload readAuthJwt(String authJwt) {
+            try {
+                Map<String, Object> payload = JsonUtil.parseJson(authJwt);
+                Preconditions.checkArgument(payload.containsKey("AuthenticationType"), "Missing AuthenticationType in JWT");
+                int authTypeOrdinal = ((Number)payload.get("AuthenticationType")).intValue();
+                if (authTypeOrdinal >= 0 && authTypeOrdinal < AuthType.values().length - 1) {
+                    AuthType authType = AuthType.values()[authTypeOrdinal + 1];
+                    if (payload.containsKey("Certificate") && payload.get("Certificate") instanceof String certJson && !certJson.isEmpty()) {
+                        Map<String, Object> certData = JsonUtil.parseJson(certJson);
+                        if (certData.containsKey("chain") && certData.get("chain") instanceof List) {
+                            List<String> chain = (List)certData.get("chain");
+                            return new CertificateChainPayload(chain, authType);
+                        } else {
+                            throw new IllegalArgumentException("Invalid Certificate chain in JWT");
+                        }
+                    } else if (payload.containsKey("Token") && payload.get("Token") instanceof String token && !token.isEmpty()) {
+                        return new TokenPayload(token, authType);
+                    } else {
+                        throw new IllegalArgumentException("Invalid AuthPayload in JWT");
+                    }
+                } else {
+                    throw new IllegalArgumentException("Invalid AuthenticationType ordinal: " + authTypeOrdinal);
+                }
+            } catch (JoseException e) {
+                throw new IllegalArgumentException("Failed to parse auth payload", e);
+            }
+        }
+    };
     public static final BedrockCodec CODEC = Bedrock_v859.CODEC
         .toBuilder().helper(() -> HELPER).build();
         

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.raphimc.minecraftauth.step.bedrock.StepMCChain.MCChain;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
 import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
@@ -153,8 +154,15 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     private void initializeOfflineProxySession() {
         log.debug("Initializing proxy session");
+
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
-            downstream.setCodec(ProxyPass.CODEC);
+            BedrockCodec.Builder codecBuilder = ProxyPass.CODEC.toBuilder();
+
+            if (this.proxy.getConfiguration().isForceCertificateChain()) {
+                codecBuilder = codecBuilder.updateSerializer(LoginPacket.class, ProxyPass.CERTIFICATE_PRIORITY_SERIALIZER);
+            }
+
+            downstream.setCodec(codecBuilder.build());
             downstream.setSendSession(this.session);
             this.session.setSendSession(downstream);
 
@@ -215,7 +223,13 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 log.error("Failed to get login chain", e);
             }
 
-            downstream.setCodec(ProxyPass.CODEC);
+            BedrockCodec.Builder codecBuilder = ProxyPass.CODEC.toBuilder();
+
+            if (this.proxy.getConfiguration().isForceCertificateChain()) {
+                codecBuilder = codecBuilder.updateSerializer(LoginPacket.class, ProxyPass.CERTIFICATE_PRIORITY_SERIALIZER);
+            }
+
+            downstream.setCodec(codecBuilder.build());
             downstream.setSendSession(this.session);
             this.session.setSendSession(downstream);
 
