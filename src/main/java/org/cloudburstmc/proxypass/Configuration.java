@@ -27,6 +27,8 @@ public class Configuration {
     private boolean onlineMode = true;
     @JsonProperty("save-auth-details")
     private boolean saveAuthDetails = true;
+    @JsonProperty("force-certificate-chain")
+    private boolean forceCertificateChain = false;
     @JsonProperty("packet-testing")
     private boolean packetTesting = false;
     @JsonProperty("log-packets")
