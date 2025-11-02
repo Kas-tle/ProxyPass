@@ -81,6 +81,12 @@ To produce a jar file, run `./gradlew build` in the project root directory. This
 
 If you wish to run the project from source, run `./gradlew run` in the project root directory.
 
+### Project Structure
+
+This project utilizes git submodules and [Gradle Composite Builds](https://docs.gradle.org/current/userguide/composite_builds.html) to include modified versions of the Protocol and Network libraries. These libraries are located in the `protocol` and `network` directories respectively. Any changes made to these libraries can be committed within their respective directories.
+
+ProxyPass directly depends on the protocol submodule via the root [settings.gradle.kts](./settings.gradle.kts). Protocol then depends on the network submodule via its own [settings.gradle.kts](./protocol/settings.gradle.kts). We can observe in a [gradle build scan](https://scans.gradle.com/s/gu5fploqzyafs) that dependency resolution for both [Protocol](https://scans.gradle.com/s/gu5fploqzyafs/dependencies?focusedDependency=WzAsMSwxMDAsWzAsMSxbMTAwXV1d&focusedDependencyView=details&toggled=W1swXSxbMCwxXV0) and [Network](https://scans.gradle.com/s/gu5fploqzyafs/dependencies?focusedDependency=WzMsMSwyMzIsWzMsMSxbMjMyXV1d&focusedDependencyView=details&toggled=W1szXSxbMywxXV0) were selected by composite build substitution rather than from a Maven repository.
+
 ### Links
 - [Releases](https://github.com/Kas-tle/ProxyPass/releases)
 - [Auth Library](https://github.com/RaphiMC/MinecraftAuth) used in this project by [RaphiMC](https://github.com/RaphiMC)
