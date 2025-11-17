@@ -21,13 +21,10 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @UtilityClass
@@ -116,8 +113,7 @@ public class ForgeryUtils {
         String publicKeyBase64 = Base64.getEncoder().encodeToString(account.authManager().getSessionKeyPair().getPublic().getEncoded());
 
         HashMap<String,Object> overrideData = new HashMap<String,Object>();
-        overrideData.put("PlayFabId", account.authManager().getPlayFabToken().getCached().getPlayFabId().toLowerCase(Locale.ROOT));
-        overrideData.put("DeviceId", UUID.randomUUID().toString());
+        overrideData.put("DeviceId", account.authManager().getDeviceId().toString().replace("-", ""));
         overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
         overrideData.put("ThirdPartyName", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
         overrideData.put("ServerAddress", serverAddress.getHostString() + ":" + String.valueOf(serverAddress.getPort()));
