@@ -453,6 +453,7 @@ public class ProxyPass {
             }
         });
         account = new Account(authManager);
+        account.refresh();
 
         if (saveAuthDetails) {
             Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
