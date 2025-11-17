@@ -4,11 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import net.raphimc.minecraftauth.step.bedrock.StepMCChain.MCChain;
+import net.raphimc.minecraftauth.bedrock.model.MinecraftMultiplayerToken;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
 import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
+import org.cloudburstmc.protocol.bedrock.data.auth.DualPayload;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.bedrock.packet.NetworkSettingsPacket;
@@ -26,7 +27,6 @@ import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.lang.JoseException;
 
-import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
@@ -45,7 +45,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private ProxyPlayerSession player;
 
     private static ECPublicKey mojangPublicKey;
-    private static List<String> onlineLoginChain;
+    private static DualPayload authPayload;
 
     private static boolean verifyJwt(String jwt, PublicKey key) throws JoseException {
         JsonWebSignature jws = new JsonWebSignature();
@@ -126,8 +126,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
                 initializeOfflineProxySession();
             } else {
-                MCChain mcChain = account.bedrockSession().getMcChain();
-                this.authData = new AuthData(mcChain.getDisplayName(), mcChain.getId(), mcChain.getXuid());
+                MinecraftMultiplayerToken token = account.authManager().getMinecraftMultiplayerToken().getCached();
+                this.authData = new AuthData(token.getDisplayName(), token.getUuid(), token.getXuid());
 
                 initializeOnlineProxySession();
             }
@@ -211,13 +211,12 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private void initializeOnlineProxySession() {
         log.debug("Initializing proxy session");
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
-            MCChain mcChain = account.bedrockSession().getMcChain();
             try {
                 if (mojangPublicKey == null) {
                     mojangPublicKey = ForgeryUtils.forgeMojangPublicKey();
                 }
-                if (onlineLoginChain == null) {
-                    onlineLoginChain = ForgeryUtils.forgeOnlineAuthData(mcChain, mojangPublicKey);
+                if (authPayload == null) {
+                    authPayload = ForgeryUtils.forgeOnlineAuthData(account.authManager(), mojangPublicKey);
                 }
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
@@ -238,7 +237,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 downstream, 
                 this.proxy, 
                 this.authData, 
-                new KeyPair(mcChain.getPublicKey(), mcChain.getPrivateKey()));
+                account.authManager().getSessionKeyPair());
             this.player = proxySession;
 
             downstream.setPlayer(proxySession);
@@ -254,7 +253,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             LoginPacket login = new LoginPacket();
             login.setClientJwt(skinData);
-            login.setAuthPayload(new CertificateChainPayload(onlineLoginChain, AuthType.FULL));
+            login.setAuthPayload(authPayload);
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
             downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));

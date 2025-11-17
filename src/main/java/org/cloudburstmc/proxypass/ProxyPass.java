@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -22,8 +23,10 @@ import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.raphimc.minecraftauth.MinecraftAuth;
-import net.raphimc.minecraftauth.step.bedrock.session.StepFullBedrockSession;
-import net.raphimc.minecraftauth.step.msa.StepMsaDeviceCode;
+import net.raphimc.minecraftauth.bedrock.BedrockAuthManager;
+import net.raphimc.minecraftauth.msa.model.MsaDeviceCode;
+import net.raphimc.minecraftauth.msa.service.impl.DeviceCodeMsaAuthService;
+import net.raphimc.minecraftauth.util.MinecraftAuth4To5Migrator;
 import org.cloudburstmc.nbt.*;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
@@ -235,7 +238,7 @@ public class ProxyPass {
             log.info("Online mode is enabled. Starting auth process...");
             try {
                 account = getAuthenticatedAccount(saveAuthDetails);
-                log.info("Successfully logged in as {}", account.bedrockSession().getMcChain().getDisplayName());
+                log.info("Successfully logged in as {}", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
             } catch (Exception e) {
                 log.error("Setting to offline mode due to failure to get login chain:", e);
                 onlineMode = false;
@@ -416,38 +419,45 @@ public class ProxyPass {
     private Account getAuthenticatedAccount(boolean saveAuthDetails) throws Exception {
         Path authPath = Paths.get(".").resolve("auth.json");
         HttpClient client = MinecraftAuth.createHttpClient();
+        BedrockAuthManager.Builder authManagerBuilder = BedrockAuthManager.create(client, CODEC.getMinecraftVersion());
         Account account;
 
-        if (Files.notExists(authPath) || !Files.isRegularFile(authPath) || !saveAuthDetails) {
-            StepFullBedrockSession.FullBedrockSession bedrockSession = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client,
-                    new StepMsaDeviceCode.MsaDeviceCodeCallback(msaDeviceCode -> {
-                        log.info("Go to " + msaDeviceCode.getVerificationUri());
-                        log.info("Enter code " + msaDeviceCode.getUserCode());
-
-                        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                            try {
-                                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                                clipboard.setContents(new StringSelection(msaDeviceCode.getUserCode()), null);
-                                log.info("Copied code to clipboard");
-                                Desktop.getDesktop().browse(new URI(msaDeviceCode.getVerificationUri()));
-                            } catch (IOException | URISyntaxException e) {
-                                log.error("Failed to open browser", e);
-                            }
-                        }
-                    }));
-            account = new Account(bedrockSession);
-
-            if (saveAuthDetails) {
-                Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        if (Files.exists(authPath) && Files.isRegularFile(authPath) && saveAuthDetails) {
+            String accountString = new String(Files.readAllBytes(authPath), StandardCharsets.UTF_8);
+            JsonObject accountJson = JsonParser.parseString(accountString).getAsJsonObject();
+            if (accountJson.has("mcChain")) {
+                accountJson = MinecraftAuth4To5Migrator.migrateBedrockSave(accountJson);
             }
-
+            account = new Account(accountJson, client, CODEC.getMinecraftVersion());
+            account.refresh();
+            Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             return account;
         }
 
-        String accountString = new String(Files.readAllBytes(authPath), StandardCharsets.UTF_8);
-        account = new Account(JsonParser.parseString(accountString).getAsJsonObject());
-        account.refresh(client);
-        Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        BedrockAuthManager authManager = authManagerBuilder.login(DeviceCodeMsaAuthService::new, new Consumer<MsaDeviceCode>() {
+            @Override
+            public void accept(MsaDeviceCode msaDeviceCode) {
+                log.info("Go to " + msaDeviceCode.getVerificationUri());
+                log.info("Enter code " + msaDeviceCode.getUserCode());
+
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    try {
+                        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        clipboard.setContents(new StringSelection(msaDeviceCode.getUserCode()), null);
+                        log.info("Copied code to clipboard");
+                        Desktop.getDesktop().browse(new URI(msaDeviceCode.getVerificationUri()));
+                    } catch (IOException | URISyntaxException e) {
+                        log.error("Failed to open browser", e);
+                    }
+                }
+            }
+        });
+        account = new Account(authManager);
+
+        if (saveAuthDetails) {
+            Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        }
+
         return account;
     }
 }
