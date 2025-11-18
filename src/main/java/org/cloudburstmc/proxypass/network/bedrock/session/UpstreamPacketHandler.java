@@ -19,10 +19,12 @@ import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.lang.JoseException;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
+import java.util.UUID;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -31,8 +33,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyPass proxy;
     private final Account account;
     private JSONObject skinData;
-    private JSONObject extraData;
-    private List<String> chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
 
@@ -77,17 +77,15 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             ECPublicKey identityPublicKey;
 
             switch (packet.getAuthPayload()) {
-                case DualPayload p -> {
-                    identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
-                    chainData = p.getChain();
-                }
-                case TokenPayload p -> {
+                case DualPayload _ -> {
                     identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
                 }
-                case CertificateChainPayload p -> {
+                case TokenPayload _ -> {
+                    identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
+                }
+                case CertificateChainPayload _ -> {
                     JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
                     identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
-                    chainData = p.getChain();
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + packet.getAuthPayload());
             }
@@ -105,7 +103,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             if (account == null) {
                 IdentityData identityData = chain.identityClaims().extraData;
-                this.authData = new AuthData(identityData.displayName, identityData.identity, identityData.xuid);
+                this.authData = new AuthData(identityData.displayName, UUID.nameUUIDFromBytes(identityData.xuid.getBytes(StandardCharsets.UTF_8)), identityData.xuid);
             } else {
                 MinecraftMultiplayerToken token = account.authManager().getMinecraftMultiplayerToken().getCached();
                 this.authData = new AuthData(token.getDisplayName(), token.getUuid(), token.getXuid());
@@ -138,9 +136,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             BedrockCodec.Builder codecBuilder = ProxyPass.CODEC.toBuilder();
-            if (this.proxy.getConfiguration().isForceCertificateChain()) {
-                codecBuilder = codecBuilder.updateSerializer(LoginPacket.class, ProxyPass.CERTIFICATE_PRIORITY_SERIALIZER);
-            }
             downstream.setCodec(codecBuilder.build());
 
             downstream.setSendSession(this.session);
@@ -180,21 +175,14 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
         if (account == null) {
             try {
-                String jwt = chainData.get(chainData.size() - 1);
-                JsonWebSignature jws = new JsonWebSignature();
-                jws.setCompactSerialization(jwt);
-                player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
                 player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
 
-            String forgedAuth = ForgeryUtils.forgeOfflineAuthData(proxySession.getProxyKeyPair(), extraData);
+            String forgedAuth = ForgeryUtils.forgeOfflineAuthData(proxySession.getProxyKeyPair(), this.authData);
             jwtSkinData = ForgeryUtils.forgeOfflineSkinData(proxySession.getProxyKeyPair(), this.skinData);
-            
-            chainData.remove(chainData.size() - 1);
-            chainData.add(forgedAuth);
-            payload = new CertificateChainPayload(chainData, AuthType.FULL);
+            payload = new CertificateChainPayload(List.of(forgedAuth), AuthType.SELF_SIGNED);
 
         } else {
             try {
