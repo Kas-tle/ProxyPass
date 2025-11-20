@@ -1,8 +1,15 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import lombok.experimental.UtilityClass;
-import net.raphimc.minecraftauth.step.bedrock.StepMCChain;
+import net.raphimc.minecraftauth.bedrock.BedrockAuthManager;
+import net.raphimc.minecraftauth.bedrock.model.MinecraftCertificateChain;
+import org.cloudburstmc.protocol.bedrock.data.auth.AuthPayload;
+import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
+import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
+import org.cloudburstmc.protocol.bedrock.data.auth.DualPayload;
+import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.session.Account;
+import org.cloudburstmc.proxypass.network.bedrock.session.AuthData;
 import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
@@ -18,34 +25,41 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 @UtilityClass
 public class ForgeryUtils {
     private static final String MOJANG_PUBLIC_KEY = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAECRXueJeTDqNRRgJi/vlRufByu/2G0i2Ebt6YMar5QX/R0DIIyrJMcUpruK4QveTfJSTp3Shlq4Gk34cD/4GUWwkv0DVuzeuB+tXija7HBxii03NHDbPAD0AKnLr2wdAp";
 
-    public static String forgeOfflineAuthData(KeyPair pair, JSONObject extraData) {
+    public static String forgeOfflineAuthData(KeyPair pair, AuthData authData) {
         String publicKeyBase64 = Base64.getEncoder().encodeToString(pair.getPublic().getEncoded());
 
         long timestamp = System.currentTimeMillis();
         Date nbf = new Date(timestamp - TimeUnit.SECONDS.toMillis(1));
         Date exp = new Date(timestamp + TimeUnit.DAYS.toMillis(1));
 
+        final Map<String, Object> extraDataMap = new HashMap<>();
+        extraDataMap.put("XUID", authData.getXuid());
+        extraDataMap.put("identity", authData.getIdentity().toString());
+        extraDataMap.put("displayName", authData.getDisplayName());
+        extraDataMap.put("titleId", "1739947436"); // Android title id
+        extraDataMap.put("sandboxId", "RETAIL");
+        JSONObject extraData = new JSONObject(extraDataMap);
+
         JwtClaims claimsSet = new JwtClaims();
         claimsSet.setNotBefore(NumericDate.fromMilliseconds(nbf.getTime()));
         claimsSet.setExpirationTime(NumericDate.fromMilliseconds(exp.getTime()));
         claimsSet.setIssuedAt(NumericDate.fromMilliseconds(exp.getTime()));
-        claimsSet.setIssuer("self");
-        claimsSet.setClaim("certificateAuthority", true);
+        claimsSet.setIssuer("Mojang");
         claimsSet.setClaim("extraData", extraData);
         claimsSet.setClaim("identityPublicKey", publicKeyBase64);
+        claimsSet.setClaim("randomNonce", ThreadLocalRandom.current().nextLong());
 
         JsonWebSignature jws = new JsonWebSignature();
         jws.setPayload(claimsSet.toJson());
@@ -60,8 +74,10 @@ public class ForgeryUtils {
         }
     }
 
-    public static List<String> forgeOnlineAuthData(StepMCChain.MCChain mcChain, ECPublicKey mojangPublicKey) throws InvalidJwtException, JoseException {
-        String publicBase64Key = Base64.getEncoder().encodeToString(mcChain.getPublicKey().getEncoded());
+    public static AuthPayload forgeOnlineAuthData(BedrockAuthManager authManager, ECPublicKey mojangPublicKey) throws InvalidJwtException, JoseException {
+        MinecraftCertificateChain mcChain = authManager.getMinecraftCertificateChain().getCached();
+        KeyPair sessionKeyPair = authManager.getSessionKeyPair();
+        String publicBase64Key = Base64.getEncoder().encodeToString(sessionKeyPair.getPublic().getEncoded());
 
         // adapted from https://github.com/RaphiMC/ViaBedrock/blob/a771149fe4492e4f1393cad66758313067840fcc/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
         JwtConsumer consumer = new JwtConsumerBuilder()
@@ -79,13 +95,19 @@ public class ForgeryUtils {
 
         JsonWebSignature selfSignedJws = new JsonWebSignature();
         selfSignedJws.setPayload(claimsSet.toJson());
-        selfSignedJws.setKey(mcChain.getPrivateKey());
+        selfSignedJws.setKey(sessionKeyPair.getPrivate());
         selfSignedJws.setAlgorithmHeaderValue("ES384");
         selfSignedJws.setHeader(HeaderParameterNames.X509_URL, publicBase64Key);
         
         String selfSignedJwt = selfSignedJws.getCompactSerialization();
 
-        return new ArrayList<>(List.of(selfSignedJwt, mcChain.getMojangJwt(), mcChain.getIdentityJwt()));
+        List<String> chain = List.of(selfSignedJwt, mcChain.getMojangJwt(), mcChain.getIdentityJwt());
+
+        if (ProxyPass.CODEC.getProtocolVersion() < 818) {
+            return new CertificateChainPayload(chain, AuthType.FULL);
+        } else {
+            return new DualPayload(chain, authManager.getMinecraftMultiplayerToken().getCached().getToken(), AuthType.FULL);
+        }
     }
 
     public static String forgeOfflineSkinData(KeyPair pair, JSONObject skinData) {
@@ -106,13 +128,12 @@ public class ForgeryUtils {
 
     @SuppressWarnings("unchecked")
     public static String forgeOnlineSkinData(Account account, JSONObject skinData, InetSocketAddress serverAddress) {
-        String publicKeyBase64 = Base64.getEncoder().encodeToString(account.bedrockSession().getMcChain().getPublicKey().getEncoded());
+        String publicKeyBase64 = Base64.getEncoder().encodeToString(account.authManager().getSessionKeyPair().getPublic().getEncoded());
 
         HashMap<String,Object> overrideData = new HashMap<String,Object>();
-        overrideData.put("PlayFabId", account.bedrockSession().getPlayFabToken().getPlayFabId().toLowerCase(Locale.ROOT));
-        overrideData.put("DeviceId", UUID.randomUUID().toString());
+        overrideData.put("DeviceId", account.authManager().getDeviceId().toString().replace("-", ""));
         overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
-        overrideData.put("ThirdPartyName", account.bedrockSession().getMcChain().getDisplayName());
+        overrideData.put("ThirdPartyName", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
         overrideData.put("ServerAddress", serverAddress.getHostString() + ":" + String.valueOf(serverAddress.getPort()));
 
         skinData.putAll(overrideData);
@@ -121,7 +142,7 @@ public class ForgeryUtils {
         jws.setAlgorithmHeaderValue("ES384");
         jws.setHeader(HeaderParameterNames.X509_URL, publicKeyBase64);
         jws.setPayload(skinData.toJSONString());
-        jws.setKey(account.bedrockSession().getMcChain().getPrivateKey());
+        jws.setKey(account.authManager().getSessionKeyPair().getPrivate());
 
         try {
             return jws.getCompactSerialization();

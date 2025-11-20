@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -22,8 +23,10 @@ import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.raphimc.minecraftauth.MinecraftAuth;
-import net.raphimc.minecraftauth.step.bedrock.session.StepFullBedrockSession;
-import net.raphimc.minecraftauth.step.msa.StepMsaDeviceCode;
+import net.raphimc.minecraftauth.bedrock.BedrockAuthManager;
+import net.raphimc.minecraftauth.msa.model.MsaDeviceCode;
+import net.raphimc.minecraftauth.msa.service.impl.DeviceCodeMsaAuthService;
+import net.raphimc.minecraftauth.util.MinecraftAuth4To5Migrator;
 import org.cloudburstmc.nbt.*;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
@@ -32,19 +35,11 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
-import org.cloudburstmc.protocol.bedrock.codec.BedrockPacketSerializer;
-import org.cloudburstmc.protocol.bedrock.codec.v818.serializer.LoginSerializer_v818;
 import org.cloudburstmc.protocol.bedrock.codec.v859.Bedrock_v859;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
-import org.cloudburstmc.protocol.bedrock.data.auth.AuthPayload;
-import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
-import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
-import org.cloudburstmc.protocol.bedrock.data.auth.TokenPayload;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
-import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
-import org.cloudburstmc.protocol.common.util.Preconditions;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
@@ -55,9 +50,6 @@ import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.ui.PacketInspector;
-import org.jose4j.json.JsonUtil;
-import org.jose4j.lang.JoseException;
-
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Toolkit;
@@ -87,36 +79,6 @@ public class ProxyPass {
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
     public static final BedrockCodecHelper HELPER = Bedrock_v859.CODEC.createHelper();
-    public static final BedrockPacketSerializer<LoginPacket> CERTIFICATE_PRIORITY_SERIALIZER = new LoginSerializer_v818() {
-        @Override
-        protected AuthPayload readAuthJwt(String authJwt) {
-            try {
-                Map<String, Object> payload = JsonUtil.parseJson(authJwt);
-                Preconditions.checkArgument(payload.containsKey("AuthenticationType"), "Missing AuthenticationType in JWT");
-                int authTypeOrdinal = ((Number)payload.get("AuthenticationType")).intValue();
-                if (authTypeOrdinal >= 0 && authTypeOrdinal < AuthType.values().length - 1) {
-                    AuthType authType = AuthType.values()[authTypeOrdinal + 1];
-                    if (payload.containsKey("Certificate") && payload.get("Certificate") instanceof String certJson && !certJson.isEmpty()) {
-                        Map<String, Object> certData = JsonUtil.parseJson(certJson);
-                        if (certData.containsKey("chain") && certData.get("chain") instanceof List) {
-                            List<String> chain = (List)certData.get("chain");
-                            return new CertificateChainPayload(chain, authType);
-                        } else {
-                            throw new IllegalArgumentException("Invalid Certificate chain in JWT");
-                        }
-                    } else if (payload.containsKey("Token") && payload.get("Token") instanceof String token && !token.isEmpty()) {
-                        return new TokenPayload(token, authType);
-                    } else {
-                        throw new IllegalArgumentException("Invalid AuthPayload in JWT");
-                    }
-                } else {
-                    throw new IllegalArgumentException("Invalid AuthenticationType ordinal: " + authTypeOrdinal);
-                }
-            } catch (JoseException e) {
-                throw new IllegalArgumentException("Failed to parse auth payload", e);
-            }
-        }
-    };
     public static final BedrockCodec CODEC = Bedrock_v859.CODEC
         .toBuilder().helper(() -> HELPER).build();
         
@@ -235,7 +197,7 @@ public class ProxyPass {
             log.info("Online mode is enabled. Starting auth process...");
             try {
                 account = getAuthenticatedAccount(saveAuthDetails);
-                log.info("Successfully logged in as {}", account.bedrockSession().getMcChain().getDisplayName());
+                log.info("Successfully logged in as {}", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
             } catch (Exception e) {
                 log.error("Setting to offline mode due to failure to get login chain:", e);
                 onlineMode = false;
@@ -416,38 +378,46 @@ public class ProxyPass {
     private Account getAuthenticatedAccount(boolean saveAuthDetails) throws Exception {
         Path authPath = Paths.get(".").resolve("auth.json");
         HttpClient client = MinecraftAuth.createHttpClient();
+        BedrockAuthManager.Builder authManagerBuilder = BedrockAuthManager.create(client, CODEC.getMinecraftVersion());
         Account account;
 
-        if (Files.notExists(authPath) || !Files.isRegularFile(authPath) || !saveAuthDetails) {
-            StepFullBedrockSession.FullBedrockSession bedrockSession = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client,
-                    new StepMsaDeviceCode.MsaDeviceCodeCallback(msaDeviceCode -> {
-                        log.info("Go to " + msaDeviceCode.getVerificationUri());
-                        log.info("Enter code " + msaDeviceCode.getUserCode());
-
-                        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                            try {
-                                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                                clipboard.setContents(new StringSelection(msaDeviceCode.getUserCode()), null);
-                                log.info("Copied code to clipboard");
-                                Desktop.getDesktop().browse(new URI(msaDeviceCode.getVerificationUri()));
-                            } catch (IOException | URISyntaxException e) {
-                                log.error("Failed to open browser", e);
-                            }
-                        }
-                    }));
-            account = new Account(bedrockSession);
-
-            if (saveAuthDetails) {
-                Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        if (Files.exists(authPath) && Files.isRegularFile(authPath) && saveAuthDetails) {
+            String accountString = new String(Files.readAllBytes(authPath), StandardCharsets.UTF_8);
+            JsonObject accountJson = JsonParser.parseString(accountString).getAsJsonObject();
+            if (accountJson.has("mcChain")) {
+                accountJson = MinecraftAuth4To5Migrator.migrateBedrockSave(accountJson);
             }
-
+            account = new Account(accountJson, client, CODEC.getMinecraftVersion());
+            account.refresh();
+            Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             return account;
         }
 
-        String accountString = new String(Files.readAllBytes(authPath), StandardCharsets.UTF_8);
-        account = new Account(JsonParser.parseString(accountString).getAsJsonObject());
-        account.refresh(client);
-        Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        BedrockAuthManager authManager = authManagerBuilder.login(DeviceCodeMsaAuthService::new, new Consumer<MsaDeviceCode>() {
+            @Override
+            public void accept(MsaDeviceCode msaDeviceCode) {
+                log.info("Go to " + msaDeviceCode.getVerificationUri());
+                log.info("Enter code " + msaDeviceCode.getUserCode());
+
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    try {
+                        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        clipboard.setContents(new StringSelection(msaDeviceCode.getUserCode()), null);
+                        log.info("Copied code to clipboard");
+                        Desktop.getDesktop().browse(new URI(msaDeviceCode.getVerificationUri()));
+                    } catch (IOException | URISyntaxException e) {
+                        log.error("Failed to open browser", e);
+                    }
+                }
+            }
+        });
+        account = new Account(authManager);
+        account.refresh();
+
+        if (saveAuthDetails) {
+            Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        }
+
         return account;
     }
 }

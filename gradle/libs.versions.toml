@@ -2,13 +2,14 @@
 bedrock-codec = { group = "org.cloudburstmc.protocol", name = "bedrock-codec" }
 bedrock-common = { group = "org.cloudburstmc.protocol", name = "common" }
 bedrock-connection = { group = "org.cloudburstmc.protocol", name = "bedrock-connection" }
+checker-qual = { group = "org.checkerframework", name = "checker-qual", version = "3.37.0" }
 jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version = "2.17.2" }
-minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "4.1.1" }
+minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "5.0.0" }
 log4j = { group = "org.apache.logging.log4j", name = "log4j-core", version = "2.12.2" }
-lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.30" }
-richtextfx = { group = "org.fxmisc.richtext", name = "richtextfx", version = "0.11.4" }
+lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.42" }
+richtextfx = { group = "org.fxmisc.richtext", name = "richtextfx", version = "0.11.6" }
 atlantafx = { group = "io.github.mkpaz", name = "atlantafx-base", version = "2.1.0" }
 
 [plugins]
-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
 javafxplugin = { id = "org.openjfx.javafxplugin", version = "0.1.0" }

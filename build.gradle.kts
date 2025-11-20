@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer
 import groovy.util.Node
+import org.openjfx.gradle.JavaFXPlatform
 
 description = "Proxy pass allows developers to MITM a vanilla client and server without modifying them."
 
@@ -13,12 +14,12 @@ plugins {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
 javafx {
-    version = "21.0.6"
+    version = "25.0.1"
     modules("javafx.controls", "javafx.fxml")
 }
 
@@ -40,6 +41,7 @@ dependencies {
     implementation(libs.minecraftauth)
     implementation(libs.richtextfx)
     implementation(libs.atlantafx)
+    implementation(libs.checker.qual)
 }
 
 application {
@@ -50,6 +52,9 @@ tasks.shadowJar {
     archiveClassifier.set("")
     archiveVersion.set("")
     transform(Log4j2PluginsCacheFileTransformer())
+    filesMatching("META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
 }
 
 tasks.named<JavaExec>("run") {

@@ -1,23 +1,16 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import net.raphimc.minecraftauth.step.bedrock.StepMCChain.MCChain;
+import net.raphimc.minecraftauth.bedrock.model.MinecraftMultiplayerToken;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
-import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
-import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
-import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
-import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
-import org.cloudburstmc.protocol.bedrock.packet.NetworkSettingsPacket;
-import org.cloudburstmc.protocol.bedrock.packet.PlayStatusPacket;
-import org.cloudburstmc.protocol.bedrock.packet.RequestNetworkSettingsPacket;
-import org.cloudburstmc.protocol.bedrock.packet.ResourcePackClientResponsePacket;
+import org.cloudburstmc.protocol.bedrock.data.auth.*;
+import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
+import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult.IdentityData;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
-import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
@@ -26,11 +19,12 @@ import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.lang.JoseException;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -39,19 +33,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyPass proxy;
     private final Account account;
     private JSONObject skinData;
-    private JSONObject extraData;
-    private List<String> chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
 
     private static ECPublicKey mojangPublicKey;
-    private static List<String> onlineLoginChain;
+    private static AuthPayload authPayload;
 
     private static boolean verifyJwt(String jwt, PublicKey key) throws JoseException {
         JsonWebSignature jws = new JsonWebSignature();
         jws.setKey(key);
         jws.setCompactSerialization(jwt);
-
         return jws.verifySignature();
     }
 
@@ -61,11 +52,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
         if (protocolVersion != ProxyPass.PROTOCOL_VERSION) {
             PlayStatusPacket status = new PlayStatusPacket();
-            if (protocolVersion > ProxyPass.PROTOCOL_VERSION) {
-                status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_SERVER_OLD);
-            } else {
-                status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_CLIENT_OLD);
-            }
+            status.setStatus(protocolVersion > ProxyPass.PROTOCOL_VERSION 
+                ? PlayStatusPacket.Status.LOGIN_FAILED_SERVER_OLD 
+                : PlayStatusPacket.Status.LOGIN_FAILED_CLIENT_OLD);
 
             session.sendPacketImmediately(status);
             return PacketSignal.HANDLED;
@@ -85,17 +74,20 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     public PacketSignal handle(LoginPacket packet) {
         try {
             ChainValidationResult chain = EncryptionUtils.validatePayload(packet.getAuthPayload());
-
-            JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
-
             ECPublicKey identityPublicKey;
 
-            if (chain.identityClaims().identityPublicKey != null) {
-                identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
-            } else if (payload.get("identityPublicKey") != null && payload.get("identityPublicKey").getNodeType() == JsonNodeType.STRING) {
-                identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
-            } else {
-                throw new RuntimeException("Identity Public Key was not found!");
+            switch (packet.getAuthPayload()) {
+                case DualPayload _ -> {
+                    identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
+                }
+                case TokenPayload _ -> {
+                    identityPublicKey = EncryptionUtils.parseKey(chain.identityClaims().identityPublicKey);
+                }
+                case CertificateChainPayload _ -> {
+                    JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
+                    identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + packet.getAuthPayload());
             }
 
             String clientJwt = packet.getClientJwt();
@@ -110,27 +102,15 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
 
             if (account == null) {
-                if (payload.get("extraData") == null) {
-                    throw new RuntimeException("New R21U9 login for offline mode is not yet supported!");
-                }
-
-                if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
-                    throw new RuntimeException("AuthData was not found!");
-                }
-
-                extraData = new JSONObject(JsonUtils.childAsType(chain.rawIdentityClaims(), "extraData", Map.class));
-
-                this.authData = new AuthData(chain.identityClaims().extraData.displayName,
-                    chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
-                chainData = ((CertificateChainPayload) packet.getAuthPayload()).getChain();
-
-                initializeOfflineProxySession();
+                IdentityData identityData = chain.identityClaims().extraData;
+                this.authData = new AuthData(identityData.displayName, UUID.nameUUIDFromBytes(identityData.xuid.getBytes(StandardCharsets.UTF_8)), identityData.xuid);
             } else {
-                MCChain mcChain = account.bedrockSession().getMcChain();
-                this.authData = new AuthData(mcChain.getDisplayName(), mcChain.getId(), mcChain.getXuid());
-
-                initializeOnlineProxySession();
+                MinecraftMultiplayerToken token = account.authManager().getMinecraftMultiplayerToken().getCached();
+                this.authData = new AuthData(token.getDisplayName(), token.getUuid(), token.getXuid());
             }
+            
+            initializeProxySession();
+
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
             throw new RuntimeException("Unable to complete login", e);
@@ -145,56 +125,39 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         }
         if (packet.getStatus() != ResourcePackClientResponsePacket.Status.COMPLETED) {
             return PacketSignal.UNHANDLED;
-        };
+        }
 
         player.getPackDownloader().processPacks();
-
         return PacketSignal.UNHANDLED;
     }
 
-    private void initializeOfflineProxySession() {
+    private void initializeProxySession() {
         log.debug("Initializing proxy session");
 
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             BedrockCodec.Builder codecBuilder = ProxyPass.CODEC.toBuilder();
-
-            if (this.proxy.getConfiguration().isForceCertificateChain()) {
-                codecBuilder = codecBuilder.updateSerializer(LoginPacket.class, ProxyPass.CERTIFICATE_PRIORITY_SERIALIZER);
-            }
-
             downstream.setCodec(codecBuilder.build());
+
             downstream.setSendSession(this.session);
             this.session.setSendSession(downstream);
 
+            KeyPair sessionKeyPair = (account != null) 
+                ? account.authManager().getSessionKeyPair() 
+                : EncryptionUtils.createKeyPair();
+
             ProxyPlayerSession proxySession = new ProxyPlayerSession(
-                this.session, 
-                downstream, 
-                this.proxy, 
-                this.authData, 
-                EncryptionUtils.createKeyPair());
+                this.session,
+                downstream,
+                this.proxy,
+                this.authData,
+                sessionKeyPair
+            );
             this.player = proxySession;
 
             downstream.setPlayer(proxySession);
             this.session.setPlayer(proxySession);
 
-            try {
-                String jwt = chainData.get(chainData.size() - 1);
-                JsonWebSignature jws = new JsonWebSignature();
-                jws.setCompactSerialization(jwt);
-                player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
-                player.getLogger().saveJson("skinData", this.skinData);
-            } catch (Exception e) {
-                log.error("JSON output error: " + e.getMessage(), e);
-            }
-            String authData = ForgeryUtils.forgeOfflineAuthData(proxySession.getProxyKeyPair(), extraData);
-            String skinData = ForgeryUtils.forgeOfflineSkinData(proxySession.getProxyKeyPair(), this.skinData);
-            chainData.remove(chainData.size() - 1);
-            chainData.add(authData);
-
-            LoginPacket login = new LoginPacket();
-            login.setClientJwt(skinData);
-            login.setAuthPayload(new CertificateChainPayload(chainData, AuthType.FULL));
-            login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
+            LoginPacket login = prepareLoginPacket(proxySession);
 
             downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
             downstream.setLogging(true);
@@ -202,71 +165,53 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
             packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
             downstream.sendPacketImmediately(packet);
-            this.player.logger.logPacket(this.session, packet, true);
-
-            //SkinUtils.saveSkin(proxySession, this.skinData);
+            this.player.getLogger().logPacket(this.session, packet, true);
         });
     }
 
-    private void initializeOnlineProxySession() {
-        log.debug("Initializing proxy session");
-        this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
-            MCChain mcChain = account.bedrockSession().getMcChain();
+    private LoginPacket prepareLoginPacket(ProxyPlayerSession proxySession) {
+        String jwtSkinData;
+        AuthPayload payload;
+
+        if (account == null) {
+            try {
+                player.getLogger().saveJson("skinData", this.skinData);
+            } catch (Exception e) {
+                log.error("JSON output error: " + e.getMessage(), e);
+            }
+
+            String forgedAuth = ForgeryUtils.forgeOfflineAuthData(proxySession.getProxyKeyPair(), this.authData);
+            jwtSkinData = ForgeryUtils.forgeOfflineSkinData(proxySession.getProxyKeyPair(), this.skinData);
+            payload = new CertificateChainPayload(List.of(forgedAuth), AuthType.SELF_SIGNED);
+
+        } else {
             try {
                 if (mojangPublicKey == null) {
                     mojangPublicKey = ForgeryUtils.forgeMojangPublicKey();
                 }
-                if (onlineLoginChain == null) {
-                    onlineLoginChain = ForgeryUtils.forgeOnlineAuthData(mcChain, mojangPublicKey);
+                if (authPayload == null) {
+                    authPayload = ForgeryUtils.forgeOnlineAuthData(account.authManager(), mojangPublicKey);
                 }
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
             }
 
-            BedrockCodec.Builder codecBuilder = ProxyPass.CODEC.toBuilder();
-
-            if (this.proxy.getConfiguration().isForceCertificateChain()) {
-                codecBuilder = codecBuilder.updateSerializer(LoginPacket.class, ProxyPass.CERTIFICATE_PRIORITY_SERIALIZER);
-            }
-
-            downstream.setCodec(codecBuilder.build());
-            downstream.setSendSession(this.session);
-            this.session.setSendSession(downstream);
-
-            ProxyPlayerSession proxySession = new ProxyPlayerSession(
-                this.session, 
-                downstream, 
-                this.proxy, 
-                this.authData, 
-                new KeyPair(mcChain.getPublicKey(), mcChain.getPrivateKey()));
-            this.player = proxySession;
-
-            downstream.setPlayer(proxySession);
-            this.session.setPlayer(proxySession);
-
-            String skinData = ForgeryUtils.forgeOnlineSkinData(account, this.skinData, this.proxy.getTargetAddress());
+            jwtSkinData = ForgeryUtils.forgeOnlineSkinData(account, this.skinData, this.proxy.getTargetAddress());
 
             try {
                 player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
+            
+            payload = authPayload;
+        }
 
-            LoginPacket login = new LoginPacket();
-            login.setClientJwt(skinData);
-            login.setAuthPayload(new CertificateChainPayload(onlineLoginChain, AuthType.FULL));
-            login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
-
-            downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
-            downstream.setLogging(true);
-
-            RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
-            packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
-            downstream.sendPacketImmediately(packet);
-            this.player.logger.logPacket(this.session, packet, true);
-
-            //SkinUtils.saveSkin(proxySession, this.skinData);
-        });
+        LoginPacket login = new LoginPacket();
+        login.setClientJwt(jwtSkinData);
+        login.setAuthPayload(payload);
+        login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
+        return login;
     }
 
     @Override
