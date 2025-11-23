@@ -78,9 +78,13 @@ public class ProxyPass {
             .addSerializer(NbtBlockDefinitionRegistry.NbtBlockDefinition.class, new NbtDefinitionSerializer());
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
+
     public static final BedrockCodecHelper HELPER = Bedrock_v859.CODEC.createHelper();
     public static final BedrockCodec CODEC = Bedrock_v859.CODEC
-        .toBuilder().helper(() -> HELPER).build();
+        .toBuilder()
+        .protocolVersion(860)
+        .minecraftVersion("1.21.124")
+        .helper(() -> HELPER).build();
         
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
