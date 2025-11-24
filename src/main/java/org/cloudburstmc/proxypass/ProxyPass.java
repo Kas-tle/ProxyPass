@@ -46,6 +46,7 @@ import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerialize
 import org.cloudburstmc.proxypass.network.bedrock.session.Account;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
+import org.cloudburstmc.proxypass.network.bedrock.session.ServerAddress;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
@@ -178,7 +179,6 @@ public class ProxyPass {
         }
 
         proxyAddress = configuration.getProxy().getAddress();
-        targetAddress = configuration.getDestination().getAddress();
         maxClients = configuration.getMaxClients();
         onlineMode = configuration.isOnlineMode();
         saveAuthDetails = configuration.isSaveAuthDetails();
@@ -197,16 +197,21 @@ public class ProxyPass {
         Files.createDirectories(sessionsDir);
         Files.createDirectories(dataDir);
 
+        HttpClient client = null;
         if (onlineMode) {
             log.info("Online mode is enabled. Starting auth process...");
             try {
-                account = getAuthenticatedAccount(saveAuthDetails);
+                client = MinecraftAuth.createHttpClient();
+                account = getAuthenticatedAccount(saveAuthDetails, client);
                 log.info("Successfully logged in as {}", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
             } catch (Exception e) {
                 log.error("Setting to offline mode due to failure to get login chain:", e);
                 onlineMode = false;
             }
         }
+
+        ServerAddress serverAddress = new ServerAddress(configuration.getDestination(), account, client);
+        targetAddress = serverAddress.getAddress();
 
         // Load block palette, if it exists
         Object object = this.loadGzipNBT("block_palette.nbt");
@@ -379,9 +384,8 @@ public class ProxyPass {
         return maxClients > 0 && this.clients.size() >= maxClients;
     }
 
-    private Account getAuthenticatedAccount(boolean saveAuthDetails) throws Exception {
+    private Account getAuthenticatedAccount(boolean saveAuthDetails, HttpClient client) throws Exception {
         Path authPath = Paths.get(".").resolve("auth.json");
-        HttpClient client = MinecraftAuth.createHttpClient();
         BedrockAuthManager.Builder authManagerBuilder = BedrockAuthManager.create(client, CODEC.getMinecraftVersion());
         Account account;
 
@@ -394,6 +398,7 @@ public class ProxyPass {
             account = new Account(accountJson, client, CODEC.getMinecraftVersion());
             account.refresh();
             Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
             return account;
         }
 

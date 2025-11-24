@@ -21,7 +21,7 @@ import java.util.Set;
 public class Configuration {
 
     private Address proxy;
-    private Address destination;
+    private Destination destination;
 
     @JsonProperty("online-mode")
     private boolean onlineMode = true;
@@ -72,5 +72,16 @@ public class Configuration {
         InetSocketAddress getAddress() {
             return new InetSocketAddress(host, port);
         }
+    }
+
+    @Getter
+    @ToString
+    public static class Destination {
+        private String host;
+        private int port;
+        @JsonProperty("experience-id")
+        private String experienceId;
+        @JsonProperty("featured-server-title")
+        private String featuredServerTitle;
     }
 }
