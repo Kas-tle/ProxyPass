@@ -25,10 +25,13 @@ proxy:
   host: 127.0.0.1
   port: 19122
 ## Destination server which the client will connect to.
-## You are only able to join offline mode servers
 destination:
   host: 127.0.0.1
   port: 19132
+  # Joins a featured server based on its title, looking up the experience ID if needed
+  # featured-server-title: "SoulSteel"
+  # Joins a featured server based on its experience ID
+  # experience-id: "e3da296b-8be0-4d79-8608-e53d60531b7b"
 ## Run the proxy in online mode. This will require login with a Microsoft account on start.
 online-mode: true
 ## Save credentials when in online mode for future logins.
