@@ -28,7 +28,7 @@ proxy:
 destination:
   host: 127.0.0.1
   port: 19132
-  # Joins a featured server based on its title, lookin up the experience ID if needed
+  # Joins a featured server based on its title, looking up the experience ID if needed
   # featured-server-title: "SoulSteel"
   # Joins a featured server based on its experience ID
   # experience-id: "e3da296b-8be0-4d79-8608-e53d60531b7b"
