@@ -83,5 +83,7 @@ public class Configuration {
         private String experienceId;
         @JsonProperty("featured-server-title")
         private String featuredServerTitle;
+        @JsonProperty("transport")
+        private String transport = "raknet";
     }
 }

@@ -11,9 +11,11 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.kastle.netty.channel.nethernet.NetherNetChannelFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFactory;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
@@ -43,6 +45,7 @@ import org.cloudburstmc.protocol.common.DefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
+import org.cloudburstmc.proxypass.network.bedrock.nethernet.initializer.NetherNetBedrockChannelInitializer;
 import org.cloudburstmc.proxypass.network.bedrock.session.Account;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
@@ -134,6 +137,7 @@ public class ProxyPass {
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+    
     private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -154,6 +158,11 @@ public class ProxyPass {
 
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
+        
+        // dev.onvoid.webrtc.logging.Logging.addLogSink(dev.onvoid.webrtc.logging.Logging.Severity.ERROR, (severity, message) -> {
+        //     System.out.println("[WebRTC Native] " + message);
+        // });
+
         ProxyPass proxy = new ProxyPass();
         try {
             proxy.boot();
@@ -174,7 +183,6 @@ public class ProxyPass {
         if (configuration.isEnableUi()) {
             log.info("Starting Packet Inspector UI...");
             PacketInspector.launchUI();
-            // No need to store a reference since we'll use static methods
             log.info("Packet Inspector UI started");
         }
 
@@ -213,7 +221,6 @@ public class ProxyPass {
         ServerAddress serverAddress = new ServerAddress(configuration.getDestination(), account, client);
         targetAddress = serverAddress.getAddress();
 
-        // Load block palette, if it exists
         Object object = this.loadGzipNBT("block_palette.nbt");
 
         if (object instanceof NbtMap map) {
@@ -255,9 +262,23 @@ public class ProxyPass {
     }
 
     public void newClient(InetSocketAddress socketAddress, Consumer<ProxyClientSession> sessionConsumer) {
-        Channel channel = new Bootstrap()
+        String transport = this.configuration.getDestination().getTransport();
+        boolean isNetherNet = "nethernet".equalsIgnoreCase(transport);
+
+        ChannelFactory<? extends Channel> channelFactory;
+
+        if (isNetherNet) {
+            channelFactory = NetherNetChannelFactory.client(NioDatagramChannel.class);
+        } else {
+            channelFactory = RakChannelFactory.client(NioDatagramChannel.class);
+        }
+
+        Bootstrap bootstrap = new Bootstrap()
                 .group(this.eventLoopGroup)
-                .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
+                .channelFactory(channelFactory);
+
+        if (!isNetherNet) {
+            bootstrap
                 .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
                 .option(RakChannelOption.RAK_COMPATIBILITY_MODE, true)
                 .option(RakChannelOption.RAK_IP_DONT_FRAGMENT, true)
@@ -266,7 +287,6 @@ public class ProxyPass {
                 .option(RakChannelOption.RAK_TIME_BETWEEN_SEND_CONNECTION_ATTEMPTS_MS, 500)
                 .option(RakChannelOption.RAK_CLIENT_BEDROCK_PROTOCOL_VERSION, PROTOCOL_VERSION)
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
-
                     @Override
                     protected ProxyClientSession createSession0(BedrockPeer peer, int subClientId) {
                         return new ProxyClientSession(peer, subClientId, ProxyPass.this);
@@ -276,7 +296,23 @@ public class ProxyPass {
                     protected void initSession(ProxyClientSession session) {
                         sessionConsumer.accept(session);
                     }
-                })
+                });
+        } else {
+            bootstrap
+                .handler(new NetherNetBedrockChannelInitializer<ProxyClientSession>() {
+                    @Override
+                    protected ProxyClientSession createSession0(BedrockPeer peer, int subClientId) {
+                        return new ProxyClientSession(peer, subClientId, ProxyPass.this);
+                    }
+
+                    @Override
+                    protected void initSession(ProxyClientSession session) {
+                        sessionConsumer.accept(session);
+                    }
+                });
+        }
+
+        Channel channel = bootstrap
                 .connect(socketAddress)
                 .awaitUninterruptibly()
                 .channel();
@@ -296,9 +332,10 @@ public class ProxyPass {
 
         }
 
-        // Shutdown
         this.clients.forEach(Channel::disconnect);
         this.server.disconnect();
+        
+        this.eventLoopGroup.shutdownGracefully();
     }
 
     public void shutdown() {

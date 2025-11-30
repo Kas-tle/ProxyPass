@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.richtextfx)
     implementation(libs.atlantafx)
     implementation(libs.checker.qual)
+    implementation(libs.netty.transport.nethernet)
 }
 
 application {

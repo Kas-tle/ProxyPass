@@ -9,6 +9,7 @@ log4j = { group = "org.apache.logging.log4j", name = "log4j-core", version = "2.
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.42" }
 richtextfx = { group = "org.fxmisc.richtext", name = "richtextfx", version = "0.11.6" }
 atlantafx = { group = "io.github.mkpaz", name = "atlantafx-base", version = "2.1.0" }
+netty-transport-nethernet = { group = "dev.kastle.netty", name = "transport-nethernet" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
