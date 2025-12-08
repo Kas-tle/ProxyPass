@@ -15,9 +15,6 @@ import org.cloudburstmc.proxypass.network.bedrock.nethernet.codec.NetherNetPacke
 import org.cloudburstmc.proxypass.network.bedrock.nethernet.peer.NetherNetBedrockPeer;
 
 public abstract class NetherNetBedrockChannelInitializer<T extends BedrockSession> extends ChannelInitializer<Channel> {
-    private static final NetherNetPacketDecoder PACKET_DECODER = new NetherNetPacketDecoder();
-    private static final NetherNetPacketEncoder PACKET_ENCODER = new NetherNetPacketEncoder();
-
     private static final CompressionStrategy ZLIB_RAW_STRATEGY = new SimpleCompressionStrategy(new ZlibCompression(Zlib.RAW));
 
     @Override
@@ -25,8 +22,8 @@ public abstract class NetherNetBedrockChannelInitializer<T extends BedrockSessio
         this.preInitChannel(channel);
 
         channel.pipeline()
-            .addLast(NetherNetPacketDecoder.NAME, PACKET_DECODER)
-            .addLast(NetherNetPacketEncoder.NAME, PACKET_ENCODER);
+            .addLast(NetherNetPacketDecoder.NAME, new NetherNetPacketDecoder())
+            .addLast(NetherNetPacketEncoder.NAME, new NetherNetPacketEncoder());
         this.initPacketCodec(channel);
 
         channel.pipeline().addLast(BedrockPeer.NAME, this.createPeer(channel));

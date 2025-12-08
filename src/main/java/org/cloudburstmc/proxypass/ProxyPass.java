@@ -12,6 +12,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.kastle.netty.channel.nethernet.NetherNetChannelFactory;
+import dev.onvoid.webrtc.PeerConnectionFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -268,7 +269,7 @@ public class ProxyPass {
         ChannelFactory<? extends Channel> channelFactory;
 
         if (isNetherNet) {
-            channelFactory = NetherNetChannelFactory.client(NioDatagramChannel.class);
+            channelFactory = NetherNetChannelFactory.client(new PeerConnectionFactory());
         } else {
             channelFactory = RakChannelFactory.client(NioDatagramChannel.class);
         }
