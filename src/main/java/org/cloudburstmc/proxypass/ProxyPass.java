@@ -35,7 +35,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
-import org.cloudburstmc.protocol.bedrock.codec.v859.Bedrock_v859;
+import org.cloudburstmc.protocol.bedrock.codec.v898.Bedrock_v898;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
@@ -80,11 +80,11 @@ public class ProxyPass {
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodecHelper HELPER = Bedrock_v859.CODEC.createHelper();
-    public static final BedrockCodec CODEC = Bedrock_v859.CODEC
+    public static final BedrockCodecHelper HELPER = Bedrock_v898.CODEC.createHelper();
+    public static final BedrockCodec CODEC = Bedrock_v898.CODEC
         .toBuilder()
-        .protocolVersion(860)
-        .minecraftVersion("1.21.124")
+        .protocolVersion(898)
+        .minecraftVersion("1.21.130")
         .helper(() -> HELPER).build();
         
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
@@ -264,7 +264,6 @@ public class ProxyPass {
                 .option(RakChannelOption.RAK_MTU_SIZES, new Integer[]{1492, 1200, 576})
                 .option(RakChannelOption.RAK_CLIENT_INTERNAL_ADDRESSES, 20)
                 .option(RakChannelOption.RAK_TIME_BETWEEN_SEND_CONNECTION_ATTEMPTS_MS, 500)
-                .option(RakChannelOption.RAK_CLIENT_BEDROCK_PROTOCOL_VERSION, PROTOCOL_VERSION)
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
 
                     @Override
