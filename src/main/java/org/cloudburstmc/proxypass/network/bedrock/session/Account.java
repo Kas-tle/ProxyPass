@@ -24,6 +24,7 @@ public class Account {
     }
 
     public boolean refresh() throws Exception {
+        authManager.getMinecraftSession().refresh();
         authManager.getMinecraftCertificateChain().refresh();
         authManager.getMinecraftMultiplayerToken().refresh();
         return true;
