@@ -66,6 +66,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -264,6 +265,7 @@ public class ProxyPass {
                 .option(RakChannelOption.RAK_MTU_SIZES, new Integer[]{1492, 1200, 576})
                 .option(RakChannelOption.RAK_CLIENT_INTERNAL_ADDRESSES, 20)
                 .option(RakChannelOption.RAK_TIME_BETWEEN_SEND_CONNECTION_ATTEMPTS_MS, 500)
+                .option(RakChannelOption.RAK_GUID, ThreadLocalRandom.current().nextLong())
                 .handler(new BedrockChannelInitializer<ProxyClientSession>() {
 
                     @Override
