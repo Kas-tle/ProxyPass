@@ -12,7 +12,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.kastle.netty.channel.nethernet.NetherNetChannelFactory;
-import dev.onvoid.webrtc.PeerConnectionFactory;
+import dev.kastle.webrtc.PeerConnectionFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -160,7 +160,7 @@ public class ProxyPass {
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
         
-        // dev.onvoid.webrtc.logging.Logging.addLogSink(dev.onvoid.webrtc.logging.Logging.Severity.ERROR, (severity, message) -> {
+        // dev.kastle.webrtc.logging.Logging.addLogSink(dev.kastle.webrtc.logging.Logging.Severity.ERROR, (severity, message) -> {
         //     System.out.println("[WebRTC Native] " + message);
         // });
 
