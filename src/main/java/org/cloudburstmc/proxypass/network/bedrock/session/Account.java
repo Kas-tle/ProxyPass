@@ -27,6 +27,7 @@ public class Account {
         authManager.getMinecraftSession().refresh();
         authManager.getMinecraftCertificateChain().refresh();
         authManager.getMinecraftMultiplayerToken().refresh();
+        authManager.getRealmsXstsToken().refresh();
         return true;
     }
 }

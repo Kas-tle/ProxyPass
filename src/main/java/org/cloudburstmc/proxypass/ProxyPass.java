@@ -12,6 +12,10 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.kastle.netty.channel.nethernet.NetherNetChannelFactory;
+import dev.kastle.netty.channel.nethernet.config.NetherNetAddress;
+import dev.kastle.netty.channel.nethernet.signaling.NetherNetDiscoverySignaling;
+import dev.kastle.netty.channel.nethernet.signaling.NetherNetSignaling;
+import dev.kastle.netty.channel.nethernet.signaling.NetherNetXboxSignaling;
 import dev.kastle.webrtc.PeerConnectionFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -64,6 +68,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -147,7 +152,7 @@ public class ProxyPass {
     private boolean onlineMode = false;
     private boolean saveAuthDetails = false;
     @Setter
-    private InetSocketAddress targetAddress;
+    private SocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
     private Path baseDir;
@@ -262,14 +267,24 @@ public class ProxyPass {
         loop();
     }
 
-    public void newClient(InetSocketAddress socketAddress, Consumer<ProxyClientSession> sessionConsumer) {
+    public void newClient(SocketAddress socketAddress, Consumer<ProxyClientSession> sessionConsumer) {
         String transport = this.configuration.getDestination().getTransport();
         boolean isNetherNet = "nethernet".equalsIgnoreCase(transport);
 
         ChannelFactory<? extends Channel> channelFactory;
 
         if (isNetherNet) {
-            channelFactory = NetherNetChannelFactory.client(new PeerConnectionFactory());
+            NetherNetSignaling signaling;
+
+            if (socketAddress instanceof NetherNetAddress) {
+                signaling = new NetherNetXboxSignaling(
+                    account.authManager().getMinecraftSession().getCached().getAuthorizationHeader()
+                );
+            } else {
+                signaling = new NetherNetDiscoverySignaling();
+            }
+
+            channelFactory = NetherNetChannelFactory.client(new PeerConnectionFactory(), signaling);
         } else {
             channelFactory = RakChannelFactory.client(NioDatagramChannel.class);
         }

@@ -83,6 +83,10 @@ public class Configuration {
         private String experienceId;
         @JsonProperty("featured-server-title")
         private String featuredServerTitle;
+        @JsonProperty("realm-name")
+        private String realmName;
+        @JsonProperty("nethernet-id")
+        private String nethernetId;
         @JsonProperty("transport")
         private String transport = "raknet";
     }

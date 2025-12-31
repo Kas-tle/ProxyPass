@@ -28,10 +28,6 @@ proxy:
 destination:
   host: 127.0.0.1
   port: 19132
-  # Joins a featured server based on its title, looking up the experience ID if needed
-  # featured-server-title: "SoulSteel"
-  # Joins a featured server based on its experience ID
-  # experience-id: "e3da296b-8be0-4d79-8608-e53d60531b7b"
 ## Run the proxy in online mode. This will require login with a Microsoft account on start.
 online-mode: true
 ## Save credentials when in online mode for future logins.
@@ -63,6 +59,71 @@ ignored-packets:
   - "ClientCacheBlobStatusPacket"
   - "ClientCacheMissResponsePacket"
 ```
+
+The destination field also supports special joining types for featured servers by experience ID, realms, and LAN games:
+
+<details>
+
+<summary>Featured Servers by Title</summary>
+
+```yaml
+destination:
+  # Joins a featured server based on its title, looking up the experience ID if needed
+  featured-server-title: "SoulSteel"
+```
+
+</details>
+
+<details>
+
+<summary>Featured Servers by Experience ID</summary>
+
+```yaml
+destination:
+  # Joins a featured server based on its experience ID
+  experience-id: "e3da296b-8be0-4d79-8608-e53d60531b7b"
+```
+
+</details>
+
+<details>
+
+<summary>LAN Games</summary>
+
+```yaml
+destination:
+  host: 192.168.0.2 # LAN server IP
+  port: 7551 # Nethetnet discovery occurs on port 7551 by default
+  transport: nethernet # LAN now uses Nethernet transport
+```
+
+</details>
+
+<details>
+
+<summary>Realms</summary>
+
+```yaml
+destination:
+  # Join a realm by specifying its name
+  realm-name: MyRealm
+  transport: nethernet # Realms now uses Nethernet transport
+```
+
+</details>
+
+<details>
+
+<summary>Nethernet ID</summary>
+
+```yaml
+destination:
+  # Join a server by its Nethernet ID
+  nethernet-id: 18eaa765-c0b4-44ac-9bba-7dca64ebf990
+  transport: nethernet
+```
+
+</details>
 
 On attempting to connect in online mode, your default web browser will direct you to a Microsoft login page requesting a token. This token has been copied to your clipboard, which you can paste into the prompt to continue. You will then be prompted to login with your Microsoft account, which of course must be associated with a valid Xbox Live account with a Minecraft character. Note that some servers may disconnect you if this process takes to long. If this is the case, simply leave ProxyPass running and login again after completing this initial login process. You will not be prompted to login again as long as ProxyPass is still running. By default, your credentials for future logins are saved. This can be disabled by setting `save-auth-details` to `false` in the `config.yml` file.
 
