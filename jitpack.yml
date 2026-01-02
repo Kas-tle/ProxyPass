@@ -1,0 +1,10 @@
+jdk:
+  - openjdk25
+install:
+  - git submodule update --init --recursive
+  - ./gradlew build
+  - ./gradlew :network:transport-raknet:publishToMavenLocal
+  - ./gradlew :protocol:common:publishToMavenLocal
+  - ./gradlew :protocol:bedrock-codec:publishToMavenLocal
+  - ./gradlew :protocol:bedrock-connection:publishToMavenLocal
+  - ./gradlew :protocol:adventure:publishToMavenLocal
