@@ -28,6 +28,7 @@ repositories {
     mavenCentral()
     maven("https://repo.opencollab.dev/maven-snapshots")
     maven("https://repo.opencollab.dev/maven-releases")
+    maven("https://jitpack.io") 
 }
 
 dependencies {

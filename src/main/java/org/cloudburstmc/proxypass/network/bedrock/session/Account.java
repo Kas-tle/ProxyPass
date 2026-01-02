@@ -28,6 +28,7 @@ public class Account {
         authManager.getMinecraftCertificateChain().refresh();
         authManager.getMinecraftMultiplayerToken().refresh();
         authManager.getRealmsXstsToken().refresh();
+        authManager.getXboxLiveXstsToken().refresh();
         return true;
     }
 }

@@ -60,6 +60,8 @@ import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.ui.PacketInspector;
+import org.cloudburstmc.proxypass.xbox.XboxSessionManager;
+
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Toolkit;
@@ -228,6 +230,19 @@ public class ProxyPass {
         ServerAddress serverAddress = new ServerAddress(configuration.getDestination(), account, client);
         targetAddress = serverAddress.getAddress();
 
+        long netherNetId = 0;
+        if (configuration.isBroadcastSession() && onlineMode) {
+            try {
+                log.info("Starting Xbox Session Broadcast...");
+                XboxSessionManager sessionManager = new XboxSessionManager(account.authManager(), client);
+                sessionManager.startSession();
+                netherNetId = sessionManager.getNetherNetId();
+                log.info("Xbox Session started. NetherNet ID: {}", Long.toUnsignedString(netherNetId));
+            } catch (Exception e) {
+                log.error("Failed to start Xbox Session", e);
+            }
+        }
+
         Object object = this.loadGzipNBT("block_palette.nbt");
 
         if (object instanceof NbtMap map) {
@@ -249,7 +264,17 @@ public class ProxyPass {
 
         if (isNetherNetListener) {
             // LAN (Discovery)
-            NetherNetServerSignaling signaling = new NetherNetDiscoverySignaling();
+            NetherNetServerSignaling signaling;
+
+            if (netherNetId != 0) {
+                // Use Xbox Signaling if session was broadcasted
+                String token = account.authManager().getMinecraftSession().getCached().getAuthorizationHeader();
+                signaling = new NetherNetXboxSignaling(netherNetId, token);
+                log.info("Using Xbox Signaling for incoming connections");
+            } else {
+                // Fallback to LAN Discovery
+                signaling = new NetherNetDiscoverySignaling();
+            }
 
             // NetherNet uses specific fields for the LAN discovery pong
             signaling.setAdvertisementData(
