@@ -31,9 +31,20 @@ repositories {
     maven("https://jitpack.io") 
 }
 
+val nativePlatforms = listOf(
+    "windows-x86_64",
+    "windows-aarch64",
+    "linux-x86_64",
+    "linux-aarch64",
+    "macos-x86_64",
+    "macos-aarch64"
+)
+
 dependencies {
     compileOnly(libs.lombok)
+
     annotationProcessor(libs.lombok)
+
     implementation(libs.bedrock.codec)
     implementation(libs.bedrock.common)
     implementation(libs.bedrock.connection)
@@ -44,6 +55,14 @@ dependencies {
     implementation(libs.atlantafx)
     implementation(libs.checker.qual)
     implementation(libs.netty.transport.nethernet)
+
+    nativePlatforms.forEach { platform ->
+        runtimeOnly(libs.webrtc.java) {
+            artifact {
+                classifier = platform
+            }
+        }
+    }
 }
 
 application {
@@ -53,6 +72,9 @@ application {
 tasks.shadowJar {
     archiveClassifier.set("")
     archiveVersion.set("")
+    manifest {
+        attributes["Enable-Native-Access"] = "ALL-UNNAMED"
+    }
     transform(Log4j2PluginsCacheFileTransformer())
     filesMatching("META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
