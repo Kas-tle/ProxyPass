@@ -69,6 +69,9 @@ public class Configuration {
         private String host;
         private int port;
 
+        @JsonProperty("transport")
+        private String transport = "raknet";
+
         InetSocketAddress getAddress() {
             return new InetSocketAddress(host, port);
         }

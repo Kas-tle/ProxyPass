@@ -13,8 +13,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.kastle.netty.channel.nethernet.NetherNetChannelFactory;
 import dev.kastle.netty.channel.nethernet.config.NetherNetAddress;
+import dev.kastle.netty.channel.nethernet.signaling.NetherNetClientSignaling;
 import dev.kastle.netty.channel.nethernet.signaling.NetherNetDiscoverySignaling;
-import dev.kastle.netty.channel.nethernet.signaling.NetherNetSignaling;
+import dev.kastle.netty.channel.nethernet.signaling.NetherNetServerSignaling;
 import dev.kastle.netty.channel.nethernet.signaling.NetherNetXboxSignaling;
 import dev.kastle.webrtc.PeerConnectionFactory;
 import io.netty.bootstrap.Bootstrap;
@@ -239,30 +240,71 @@ public class ProxyPass {
         }
 
         log.info("Loading server...");
+
+        String listenerTransport = configuration.getProxy().getTransport();
+        boolean isNetherNetListener = "nethernet".equalsIgnoreCase(listenerTransport);
+
         ADVERTISEMENT.ipv4Port(this.proxyAddress.getPort())
                 .ipv6Port(this.proxyAddress.getPort());
-        this.server = new ServerBootstrap()
-                .group(this.eventLoopGroup)
-                .channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
-                .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.toByteBuf())
-                .option(RakChannelOption.RAK_IP_DONT_FRAGMENT, true)
-                .childHandler(new BedrockChannelInitializer<ProxyServerSession>() {
 
-                    @Override
-                    protected ProxyServerSession createSession0(BedrockPeer peer, int subClientId) {
-                        return new ProxyServerSession(peer, subClientId, ProxyPass.this);
-                    }
+        if (isNetherNetListener) {
+            // LAN (Discovery)
+            NetherNetServerSignaling signaling = new NetherNetDiscoverySignaling();
 
-                    @Override
-                    protected void initSession(ProxyServerSession session) {
-                        session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this, account));
-                    }
-                })
-                .bind(this.proxyAddress)
-                .awaitUninterruptibly()
-                .channel();
-        this.server.pipeline().remove(RakServerRateLimiter.NAME);
-        log.info("Bedrock server started on {}", proxyAddress);
+            // NetherNet uses specific fields for the LAN discovery pong
+            signaling.setAdvertisementData(
+                new NetherNetServerSignaling.PongData.Builder()
+                    .setServerName("NetherNet Server")
+                    .setLevelName("World")
+                    .setGameType(0)
+                    .setPlayerCount(0)
+                    .setMaxPlayerCount(10)
+                    .build()
+            );
+
+            this.server = new ServerBootstrap()
+                    .group(this.eventLoopGroup)
+                    .channelFactory(NetherNetChannelFactory.server(new PeerConnectionFactory(), signaling))
+                    .childHandler(new NetherNetBedrockChannelInitializer<ProxyServerSession>() {
+                        @Override
+                        protected ProxyServerSession createSession0(BedrockPeer peer, int subClientId) {
+                            return new ProxyServerSession(peer, subClientId, ProxyPass.this);
+                        }
+
+                        @Override
+                        protected void initSession(ProxyServerSession session) {
+                            session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this, account));
+                        }
+                    })
+                    .bind(this.proxyAddress)
+                    .awaitUninterruptibly()
+                    .channel();
+            
+            log.info("NetherNet (LAN) server started on {}", proxyAddress);
+
+        } else {
+            this.server = new ServerBootstrap()
+                    .group(this.eventLoopGroup)
+                    .channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
+                    .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.toByteBuf())
+                    .option(RakChannelOption.RAK_IP_DONT_FRAGMENT, true)
+                    .childHandler(new BedrockChannelInitializer<ProxyServerSession>() {
+                        @Override
+                        protected ProxyServerSession createSession0(BedrockPeer peer, int subClientId) {
+                            return new ProxyServerSession(peer, subClientId, ProxyPass.this);
+                        }
+
+                        @Override
+                        protected void initSession(ProxyServerSession session) {
+                            session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this, account));
+                        }
+                    })
+                    .bind(this.proxyAddress)
+                    .awaitUninterruptibly()
+                    .channel();
+            this.server.pipeline().remove(RakServerRateLimiter.NAME);
+            log.info("Bedrock server started on {}", proxyAddress);
+        }
 
         loop();
     }
@@ -274,7 +316,7 @@ public class ProxyPass {
         ChannelFactory<? extends Channel> channelFactory;
 
         if (isNetherNet) {
-            NetherNetSignaling signaling;
+            NetherNetClientSignaling signaling;
 
             if (socketAddress instanceof NetherNetAddress) {
                 signaling = new NetherNetXboxSignaling(
