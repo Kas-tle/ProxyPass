@@ -3,6 +3,7 @@ jdk:
 install:
   - git submodule update --init --recursive
   - ./gradlew build
+  - ./gradlew :network:transport-nethernet:publishToMavenLocal
   - ./gradlew :network:transport-raknet:publishToMavenLocal
   - ./gradlew :protocol:common:publishToMavenLocal
   - ./gradlew :protocol:bedrock-codec:publishToMavenLocal
