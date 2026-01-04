@@ -13,7 +13,7 @@ import java.net.MalformedURLException;
 public class SessionDirectoryRequest extends PutRequest implements MinecraftResponseHandler<GsonObject> {
 
     public SessionDirectoryRequest(MinecraftSession session, String scid, String template, String sessionName, SessionRequestData data) throws MalformedURLException {
-        super(String.format("https://sessiondirectory.xboxlive.com/serviceconfigs/%s/sessiontemplates/%s/sessions/%s", scid, template, sessionName));
+        super(String.format("https://sessiondirectory.xboxlive.com/serviceconfigs/%s/sessionTemplates/%s/sessions/%s", scid, template, sessionName));
         
         this.setContent(new JsonContent(data.toJson()));
         this.setHeader("Authorization", session.getAuthorizationHeader());

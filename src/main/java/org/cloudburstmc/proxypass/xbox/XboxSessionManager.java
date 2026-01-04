@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class XboxSessionManager {
 
-    private static final String SCID = "45350100-2f27-4b61-904f-7df844204279";
+    private static final String SCID = "4fc10100-5f7a-4470-899b-280835760c07";
     private static final String TEMPLATE = "MinecraftLobby";
     private static final Gson GSON = new Gson();
 
@@ -75,14 +75,19 @@ public class XboxSessionManager {
                 .subscriptionId(rtaSubscriptionId)
                 .xuid(authManager.getMinecraftMultiplayerToken().getCached().getXuid())
                 .netherNetId(netherNetId)
-                .maxPlayers(10)
+                .maxPlayers(20)
                 .currentPlayers(1)
                 .sessionName("ProxyPass Server")
                 .version(version)
                 .protocol(protocol)
                 .build();
 
-        httpClient.execute(new SessionDirectoryRequest(session.getUpToDate(), SCID, TEMPLATE, sessionId, sessionData));
+        SessionDirectoryRequest directoryRequest = new SessionDirectoryRequest(
+                session.getUpToDate(), SCID, TEMPLATE, sessionId, sessionData
+        );
+        log.info("Creating Xbox session request to: {}", directoryRequest.getURL());
+        log.info("Data: {}", sessionData.toJson().toString());
+        httpClient.execute(directoryRequest);
 
         SessionHandleData handleData = SessionHandleData.builder()
                 .scid(SCID)

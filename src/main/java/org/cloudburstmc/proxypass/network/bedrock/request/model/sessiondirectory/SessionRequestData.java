@@ -32,10 +32,9 @@ public class SessionRequestData {
         custom.addProperty("hostName", sessionName);
         custom.addProperty("worldName", sessionName);
         custom.addProperty("version", version);
-        custom.addProperty("MemberCount", currentPlayers);
+        custom.addProperty("MemberCount", Math.max(currentPlayers, 2));
         custom.addProperty("MaxMemberCount", maxPlayers);
         custom.addProperty("Joinability", "joinable_by_friends");
-        custom.addProperty("ownerId", xuid); // Critical: Must match the XUID of the token
         custom.addProperty("rakNetGUID", "");
         custom.addProperty("worldType", "Survival");
         custom.addProperty("protocol", protocol);
@@ -44,10 +43,10 @@ public class SessionRequestData {
         custom.addProperty("CrossPlayDisabled", false);
         custom.addProperty("TitleId", 0);
         custom.addProperty("TransportLayer", 2);
-        custom.addProperty("LanGame", true);
-        custom.addProperty("WebRTCNetworkId", netherNetId); // Critical: Top-level ID
+        custom.addProperty("LanGame", false);
         custom.addProperty("isHardcore", false);
         custom.addProperty("isEditorWorld", false);
+        custom.addProperty("levelId", "level");
 
         // Supported Connections
         JsonArray supportedConnections = new JsonArray();
@@ -55,7 +54,6 @@ public class SessionRequestData {
         netherNetConnection.addProperty("ConnectionType", 3);
         netherNetConnection.addProperty("HostIpAddress", "");
         netherNetConnection.addProperty("HostPort", 0);
-        netherNetConnection.addProperty("WebRTCNetworkId", netherNetId); // bedrock-portal adds both
         netherNetConnection.addProperty("NetherNetId", netherNetId);
         supportedConnections.add(netherNetConnection);
         custom.add("SupportedConnections", supportedConnections);
