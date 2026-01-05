@@ -19,11 +19,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.raphimc.minecraftauth.bedrock.BedrockAuthManager;
-import net.raphimc.minecraftauth.bedrock.model.MinecraftSession;
-import net.raphimc.minecraftauth.util.holder.Holder;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.request.SessionDirectoryRequest;
 import org.cloudburstmc.proxypass.network.bedrock.request.SessionHandleRequest;
+import org.cloudburstmc.proxypass.network.bedrock.request.UserPresenceRequest;
 import org.cloudburstmc.proxypass.network.bedrock.request.model.sessiondirectory.SessionHandleData;
 import org.cloudburstmc.proxypass.network.bedrock.request.model.sessiondirectory.SessionRequestData;
 
@@ -48,24 +47,30 @@ public class XboxSessionManager {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private String rtaConnectionId;
-    private String rtaSubscriptionId; // Store subscription ID
+    private String rtaSubscriptionId;
     private String sessionId;
 
     @Getter
     private long netherNetId;
 
-    public void startSession() throws Exception {
-        this.netherNetId = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
-        log.info("Generated NetherNet ID: {}", netherNetId);
+    public void setupConnection() throws Exception {
+        String xuid = authManager.getMinecraftMultiplayerToken().getUpToDate().getXuid();
 
-        String xstsToken = authManager.getXboxLiveXstsToken().getCached().getAuthorizationHeader();
-
-        this.rtaConnectionId = connectRtaAndGetId(xstsToken).join();
+        this.rtaConnectionId = connectRtaAndGetId(
+            authManager.getXboxLiveXstsToken().getUpToDate().getAuthorizationHeader(),
+            xuid
+        ).join();
         this.rtaSubscriptionId = UUID.randomUUID().toString();
         log.info("RTA Connected. ConnID: {}, SubID: {}", rtaConnectionId, rtaSubscriptionId);
 
+        this.netherNetId = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
+        log.info("Generated NetherNet ID: {}", netherNetId);
+    }
+
+    public void startSession() throws Exception {
+        String xuid = authManager.getMinecraftMultiplayerToken().getUpToDate().getXuid();
+
         this.sessionId = UUID.randomUUID().toString();
-        Holder<MinecraftSession> session = authManager.getMinecraftSession();
 
         int protocol = ProxyPass.CODEC.getProtocolVersion();
         String version = ProxyPass.CODEC.getMinecraftVersion();
@@ -73,7 +78,7 @@ public class XboxSessionManager {
         SessionRequestData sessionData = SessionRequestData.builder()
                 .connectionId(rtaConnectionId)
                 .subscriptionId(rtaSubscriptionId)
-                .xuid(authManager.getMinecraftMultiplayerToken().getCached().getXuid())
+                .xuid(xuid)
                 .netherNetId(netherNetId)
                 .maxPlayers(20)
                 .currentPlayers(1)
@@ -83,10 +88,8 @@ public class XboxSessionManager {
                 .build();
 
         SessionDirectoryRequest directoryRequest = new SessionDirectoryRequest(
-                session.getUpToDate(), SCID, TEMPLATE, sessionId, sessionData
+                authManager.getXboxLiveXstsToken().getUpToDate(), SCID, TEMPLATE, sessionId, sessionData
         );
-        log.info("Creating Xbox session request to: {}", directoryRequest.getURL());
-        log.info("Data: {}", sessionData.toJson().toString());
         httpClient.execute(directoryRequest);
 
         SessionHandleData handleData = SessionHandleData.builder()
@@ -95,18 +98,24 @@ public class XboxSessionManager {
                 .sessionName(sessionId)
                 .build();
         
-        httpClient.execute(new SessionHandleRequest(session.getUpToDate(), handleData));
+        httpClient.execute(new SessionHandleRequest(authManager.getXboxLiveXstsToken().getUpToDate(), handleData));
+
+        httpClient.execute(new UserPresenceRequest(
+            authManager.getXboxLiveXstsToken().getUpToDate(), 
+            xuid
+        ));
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                httpClient.execute(new SessionDirectoryRequest(session.getUpToDate(), SCID, TEMPLATE, sessionId, sessionData));
+                httpClient.execute(new UserPresenceRequest(authManager.getXboxLiveXstsToken().getUpToDate(), xuid));
+                httpClient.execute(new SessionDirectoryRequest(authManager.getXboxLiveXstsToken().getUpToDate(), SCID, TEMPLATE, sessionId, sessionData));
             } catch (Exception e) {
                 log.error("Failed to heartbeat session", e);
             }
         }, 30, 30, TimeUnit.SECONDS);
     }
 
-    private CompletableFuture<String> connectRtaAndGetId(String xstsToken) {
+    private CompletableFuture<String> connectRtaAndGetId(String xstsToken, String xuid) {
         CompletableFuture<String> future = new CompletableFuture<>();
         URI uri = URI.create("wss://rta.xboxlive.com/connect");
         EventLoopGroup group = new NioEventLoopGroup();
@@ -151,6 +160,8 @@ public class XboxSessionManager {
                                             if (data.has("ConnectionId")) {
                                                 String connId = data.get("ConnectionId").getAsString();
                                                 future.complete(connId);
+                                                String friendSub = String.format("[1,2,\"https://social.xboxlive.com/users/xuid(%s)/friends\"]", xuid);
+                                                ctx.writeAndFlush(new TextWebSocketFrame(friendSub));
                                             }
                                         }
                                     } catch (Exception ignored) {}

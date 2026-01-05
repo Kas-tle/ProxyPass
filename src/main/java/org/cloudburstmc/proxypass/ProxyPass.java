@@ -165,6 +165,7 @@ public class ProxyPass {
     private DefinitionRegistry<BlockDefinition> blockDefinitions;
     private DefinitionRegistry<BlockDefinition> blockDefinitionsHashed;
     private static Account account;
+    private XboxSessionManager xboxSessionManager;
 
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
@@ -231,19 +232,6 @@ public class ProxyPass {
         ServerAddress serverAddress = new ServerAddress(configuration.getDestination(), account, client);
         targetAddress = serverAddress.getAddress();
 
-        long netherNetId = 0;
-        if (configuration.isBroadcastSession() && onlineMode) {
-            try {
-                log.info("Starting Xbox Session Broadcast...");
-                XboxSessionManager sessionManager = new XboxSessionManager(account.authManager(), client);
-                sessionManager.startSession();
-                netherNetId = sessionManager.getNetherNetId();
-                log.info("Xbox Session started. NetherNet ID: {}", Long.toUnsignedString(netherNetId));
-            } catch (Exception e) {
-                log.error("Failed to start Xbox Session", e);
-            }
-        }
-
         Object object = this.loadGzipNBT("block_palette.nbt");
 
         if (object instanceof NbtMap map) {
@@ -264,29 +252,37 @@ public class ProxyPass {
                 .ipv6Port(this.proxyAddress.getPort());
 
         if (isNetherNetListener) {
-            // LAN (Discovery)
-            NetherNetServerSignaling signaling;
+            NetherNetServerSignaling signaling = null;
 
-            if (netherNetId != 0) {
-                // Use Xbox Signaling if session was broadcasted
-                String token = account.authManager().getMinecraftSession().getCached().getAuthorizationHeader();
-                signaling = new NetherNetXboxSignaling(netherNetId, token);
-                log.info("Using Xbox Signaling for incoming connections");
-            } else {
-                // Fallback to LAN Discovery
-                signaling = new NetherNetDiscoverySignaling();
+            if (configuration.isBroadcastSession() && onlineMode) {
+                try {
+                    log.info("Starting Xbox Session Broadcast...");
+                    this.xboxSessionManager = new XboxSessionManager(account.authManager(), client);
+                    this.xboxSessionManager.setupConnection();
+
+                    signaling = new NetherNetXboxSignaling(
+                        this.xboxSessionManager.getNetherNetId(), 
+                        account.authManager().getMinecraftSession().getUpToDate().getAuthorizationHeader()
+                    );
+                    log.info("Using Xbox Signaling for incoming connections");
+                } catch (Exception e) {
+                    log.error("Failed to start Xbox Session", e);
+                    log.info("Falling back to Discovery Signaling for incoming connections");
+                }
             }
 
-            // NetherNet uses specific fields for the LAN discovery pong
-            signaling.setAdvertisementData(
-                new NetherNetServerSignaling.PongData.Builder()
-                    .setServerName("NetherNet Server")
-                    .setLevelName("World")
-                    .setGameType(0)
-                    .setPlayerCount(0)
-                    .setMaxPlayerCount(10)
-                    .build()
-            );
+            if (signaling == null) {
+                signaling = new NetherNetDiscoverySignaling();
+                signaling.setAdvertisementData(
+                    new NetherNetServerSignaling.PongData.Builder()
+                        .setServerName("NetherNet Server")
+                        .setLevelName("World")
+                        .setGameType(0)
+                        .setPlayerCount(0)
+                        .setMaxPlayerCount(10)
+                        .build()
+                );
+            }
 
             this.server = new ServerBootstrap()
                     .group(this.eventLoopGroup)
@@ -305,8 +301,17 @@ public class ProxyPass {
                     .bind(this.proxyAddress)
                     .awaitUninterruptibly()
                     .channel();
+
+            if (this.xboxSessionManager != null) {
+                try {
+                    this.xboxSessionManager.startSession();
+                    log.info("Xbox Session Broadcast started successfully.");
+                } catch (Exception e) {
+                    log.error("Failed to start Xbox Session", e);
+                }
+            }
             
-            log.info("NetherNet (LAN) server started on {}", proxyAddress);
+            log.info("NetherNet server started on {}", proxyAddress);
 
         } else {
             this.server = new ServerBootstrap()

@@ -3,6 +3,7 @@ package org.cloudburstmc.proxypass.network.bedrock.request;
 import com.google.gson.JsonObject;
 import net.lenni0451.commons.gson.elements.GsonObject;
 import net.lenni0451.commons.httpclient.HttpResponse;
+import net.lenni0451.commons.httpclient.constants.HttpHeaders;
 import net.lenni0451.commons.httpclient.requests.impl.PostRequest;
 import net.raphimc.minecraftauth.bedrock.model.MinecraftSession;
 import net.raphimc.minecraftauth.bedrock.responsehandler.MinecraftResponseHandler;
@@ -18,7 +19,7 @@ public class ExperienceRequest extends PostRequest implements MinecraftResponseH
         postData.addProperty("experienceId", experienceId);
 
         this.setContent(new JsonContent(postData));
-        this.setHeader("Authorization", session.getAuthorizationHeader());
+        this.setHeader(HttpHeaders.AUTHORIZATION, session.getAuthorizationHeader());
     }
 
     @Override

@@ -30,9 +30,10 @@ public class SessionRequestData {
 
         JsonObject custom = new JsonObject();
         custom.addProperty("hostName", sessionName);
+        custom.addProperty("ownerId", xuid);
         custom.addProperty("worldName", sessionName);
         custom.addProperty("version", version);
-        custom.addProperty("MemberCount", Math.max(currentPlayers, 2));
+        custom.addProperty("MemberCount", Math.max(currentPlayers, 1));
         custom.addProperty("MaxMemberCount", maxPlayers);
         custom.addProperty("Joinability", "joinable_by_friends");
         custom.addProperty("rakNetGUID", "");
