@@ -1,9 +1,14 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
+import dev.kastle.netty.channel.nethernet.config.NetherNetAddress;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.raphimc.minecraftauth.bedrock.model.MinecraftSession;
+import net.raphimc.minecraftauth.extra.realms.model.RealmsJoinInformation;
+import net.raphimc.minecraftauth.extra.realms.model.RealmsServer;
+import net.raphimc.minecraftauth.extra.realms.service.impl.BedrockRealmsService;
+import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.Configuration.Destination;
 import org.cloudburstmc.proxypass.network.bedrock.request.ExperienceRequest;
 import org.cloudburstmc.proxypass.network.bedrock.request.FeaturedServersRequest;
@@ -13,11 +18,12 @@ import org.cloudburstmc.proxypass.network.bedrock.request.model.featuredservers.
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 @Log4j2
 public class ServerAddress {
     @Getter
-    private InetSocketAddress address;
+    private SocketAddress address;
     private String host;
     private int port;
 
@@ -26,9 +32,63 @@ public class ServerAddress {
         this.port = destination.getPort();
         String experienceId = destination.getExperienceId();
         String featuredServerTitle = destination.getFeaturedServerTitle();
+        String realmName = destination.getRealmName();
+        String nethernetId = destination.getNethernetId();
 
-        log.info("Resolving server address for destination: host={}, port={}, experienceId={}, featuredServerTitle={}",
-                this.host, this.port, experienceId, featuredServerTitle);
+        log.info("Resolving server address for destination: host={}, port={}, experienceId={}, featuredServerTitle={}, realmName={}",
+                this.host, this.port, experienceId, featuredServerTitle, realmName);
+
+        if (nethernetId != null) {
+            this.address = new NetherNetAddress(nethernetId);
+            log.info("Using NetherNet address with ID {}", nethernetId);
+            return;
+        }
+
+        if (realmName != null && client != null) {
+            try {
+                BedrockRealmsService realmsService = new BedrockRealmsService(client, ProxyPass.CODEC.getMinecraftVersion(), account.authManager().getRealmsXstsToken());
+                
+                RealmsServer targetRealm = null;
+
+                for (RealmsServer realm : realmsService.getWorlds()) {
+                    if (realm.getName().equalsIgnoreCase(realmName)) {
+                        targetRealm = realm;
+                        log.info("Found Realm ID {} for name '{}'", realm.getId(), realmName);
+                        break;
+                    }
+                }
+
+                if (targetRealm != null) {
+                    RealmsJoinInformation joinInfo = realmsService.joinWorld(targetRealm);
+                    String fullAddress = joinInfo.getAddress();
+                    String protocol = joinInfo.getNetworkProtocol();
+
+                    log.info("Join information for Realm '{}': {}", realmName, joinInfo);
+
+                    if (fullAddress == null || fullAddress.isEmpty()) {
+                        throw new IllegalArgumentException("Realms API provided no server address!");
+                    }
+
+                    if (protocol.equalsIgnoreCase("NETHERNET")) {
+                        this.address = new NetherNetAddress(fullAddress);
+                        return;
+                    } else {
+                        String[] parts = fullAddress.split(":");
+                        this.host = parts[0];
+                        if (parts.length > 1) {
+                            this.port = Integer.parseInt(parts[1]);
+                        } else {
+                            this.port = 19132;
+                        }
+                        log.info("Resolved Realm '{}' to {}:{}", realmName, this.host, this.port);
+                    }
+                } else {
+                    log.warn("Could not find Realm with name: {}", realmName);
+                }
+            } catch (IOException e) {
+                log.error("Failed to resolve Realm address", e);
+            }
+        }
 
         if (featuredServerTitle != null && client != null) {
             try {

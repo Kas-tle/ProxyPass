@@ -1,5 +1,6 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
+import dev.kastle.netty.channel.nethernet.NetherNetChannel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
@@ -34,7 +35,6 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
         int threshold = packet.getCompressionThreshold();
         if (threshold > 0) {
             this.session.setCompression(packet.getCompressionAlgorithm());
-            log.info("Compression threshold set to {}", threshold);
         } else {
             this.session.setCompression(PacketCompressionAlgorithm.NONE);
             log.info("Compression threshold set to 0");
@@ -54,13 +54,18 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
             ECPublicKey serverKey = EncryptionUtils.parseKey(x5u);
             SecretKey key = EncryptionUtils.getSecretKey(this.player.getProxyKeyPair().getPrivate(), serverKey,
                     Base64.getDecoder().decode(JsonUtils.childAsType(saltJwt, "salt", String.class)));
-            session.enableEncryption(key);
+
+            if (!(this.session.getPeer().getChannel() instanceof NetherNetChannel)) {
+                // Nethernet stopped using encryption at some point...
+                this.session.enableEncryption(key);
+                log.debug("Enabled downstream encryption");
+            }
         } catch (JoseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
 
         ClientToServerHandshakePacket clientToServerHandshake = new ClientToServerHandshakePacket();
-        session.sendPacketImmediately(clientToServerHandshake);
+        this.session.sendPacketImmediately(clientToServerHandshake);
         this.player.logger.logPacket(this.session, clientToServerHandshake, true);
 
 

@@ -28,10 +28,6 @@ proxy:
 destination:
   host: 127.0.0.1
   port: 19132
-  # Joins a featured server based on its title, looking up the experience ID if needed
-  # featured-server-title: "SoulSteel"
-  # Joins a featured server based on its experience ID
-  # experience-id: "e3da296b-8be0-4d79-8608-e53d60531b7b"
 ## Run the proxy in online mode. This will require login with a Microsoft account on start.
 online-mode: true
 ## Save credentials when in online mode for future logins.
@@ -64,6 +60,71 @@ ignored-packets:
   - "ClientCacheMissResponsePacket"
 ```
 
+The destination field also supports special joining types for featured servers by experience ID, realms, and LAN games:
+
+<details>
+
+<summary>Featured Servers by Title</summary>
+
+```yaml
+destination:
+  # Joins a featured server based on its title, looking up the experience ID if needed
+  featured-server-title: "SoulSteel"
+```
+
+</details>
+
+<details>
+
+<summary>Featured Servers by Experience ID</summary>
+
+```yaml
+destination:
+  # Joins a featured server based on its experience ID
+  experience-id: "e3da296b-8be0-4d79-8608-e53d60531b7b"
+```
+
+</details>
+
+<details>
+
+<summary>LAN Games</summary>
+
+```yaml
+destination:
+  host: 192.168.0.2 # LAN server IP
+  port: 7551 # Nethetnet discovery occurs on port 7551 by default
+  transport: nethernet # LAN now uses Nethernet transport
+```
+
+</details>
+
+<details>
+
+<summary>Realms</summary>
+
+```yaml
+destination:
+  # Join a realm by specifying its name
+  realm-name: MyRealm
+  transport: nethernet # Realms now uses Nethernet transport
+```
+
+</details>
+
+<details>
+
+<summary>Nethernet ID</summary>
+
+```yaml
+destination:
+  # Join a server by its Nethernet ID
+  nethernet-id: 18eaa765-c0b4-44ac-9bba-7dca64ebf990
+  transport: nethernet
+```
+
+</details>
+
 On attempting to connect in online mode, your default web browser will direct you to a Microsoft login page requesting a token. This token has been copied to your clipboard, which you can paste into the prompt to continue. You will then be prompted to login with your Microsoft account, which of course must be associated with a valid Xbox Live account with a Minecraft character. Note that some servers may disconnect you if this process takes to long. If this is the case, simply leave ProxyPass running and login again after completing this initial login process. You will not be prompted to login again as long as ProxyPass is still running. By default, your credentials for future logins are saved. This can be disabled by setting `save-auth-details` to `false` in the `config.yml` file.
 
 ### Building & Running
@@ -89,6 +150,26 @@ If you wish to run the project from source, run `./gradlew run` in the project r
 This project utilizes git submodules and [Gradle Composite Builds](https://docs.gradle.org/current/userguide/composite_builds.html) to include modified versions of the Protocol and Network libraries. These libraries are located in the `protocol` and `network` directories respectively. Any changes made to these libraries can be committed within their respective directories.
 
 ProxyPass directly depends on the protocol submodule via the root [settings.gradle.kts](./settings.gradle.kts). Protocol then depends on the network submodule via its own [settings.gradle.kts](https://github.com/Kas-tle/Protocol/blob/50836b73f09103de9e5539c14da3fe05deec6c54/settings.gradle.kts). We can observe in a [gradle build scan](https://scans.gradle.com/s/gu5fploqzyafs) that dependency resolution for both [Protocol](https://scans.gradle.com/s/gu5fploqzyafs/dependencies?focusedDependency=WzAsMSwxMDAsWzAsMSxbMTAwXV1d&focusedDependencyView=details&toggled=W1swXSxbMCwxXV0) and [Network](https://scans.gradle.com/s/gu5fploqzyafs/dependencies?focusedDependency=WzMsMSwyMzIsWzMsMSxbMjMyXV1d&focusedDependencyView=details&toggled=W1szXSxbMywxXV0) were selected by composite build substitution rather than from a Maven repository.
+
+### Packet Flows
+
+#### Raknet
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/readme/protocol_raknet_dark.svg">
+  <img src=".github/readme/protocol_raknet_light.svg">
+</picture>
+
+#### Nethernet
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/readme/protocol_nethernet_dark.svg">
+  <img src=".github/readme/protocol_nethernet_light.svg">
+</picture>
 
 ### Links
 - [Releases](https://github.com/Kas-tle/ProxyPass/releases)

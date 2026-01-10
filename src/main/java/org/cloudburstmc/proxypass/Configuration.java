@@ -27,6 +27,8 @@ public class Configuration {
     private boolean onlineMode = true;
     @JsonProperty("save-auth-details")
     private boolean saveAuthDetails = true;
+    @JsonProperty("broadcast-session")
+    private boolean broadcastSession = false;
     @JsonProperty("packet-testing")
     private boolean packetTesting = false;
     @JsonProperty("log-packets")
@@ -69,6 +71,9 @@ public class Configuration {
         private String host;
         private int port;
 
+        @JsonProperty("transport")
+        private String transport = "raknet";
+
         InetSocketAddress getAddress() {
             return new InetSocketAddress(host, port);
         }
@@ -83,5 +88,11 @@ public class Configuration {
         private String experienceId;
         @JsonProperty("featured-server-title")
         private String featuredServerTitle;
+        @JsonProperty("realm-name")
+        private String realmName;
+        @JsonProperty("nethernet-id")
+        private String nethernetId;
+        @JsonProperty("transport")
+        private String transport = "raknet";
     }
 }

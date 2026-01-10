@@ -4,11 +4,14 @@ bedrock-common = { group = "org.cloudburstmc.protocol", name = "common" }
 bedrock-connection = { group = "org.cloudburstmc.protocol", name = "bedrock-connection" }
 checker-qual = { group = "org.checkerframework", name = "checker-qual", version = "3.37.0" }
 jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version = "2.17.2" }
-minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "5.0.0" }
+# minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "5.0.0" }
+minecraftauth = { group = "dev.kastle", name = "MinecraftAuth", version = "f3d6e3fbc8" }
 log4j = { group = "org.apache.logging.log4j", name = "log4j-core", version = "2.12.2" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.42" }
 richtextfx = { group = "org.fxmisc.richtext", name = "richtextfx", version = "0.11.6" }
 atlantafx = { group = "io.github.mkpaz", name = "atlantafx-base", version = "2.1.0" }
+webrtc-java = { group = "dev.kastle.webrtc", name = "webrtc-java", version = "1.0.3" }
+netty-transport-nethernet = { group = "dev.kastle.netty", name = "transport-nethernet" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version = "9.2.2" }

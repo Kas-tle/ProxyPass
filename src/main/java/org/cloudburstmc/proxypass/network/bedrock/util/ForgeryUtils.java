@@ -1,5 +1,6 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
+import dev.kastle.netty.channel.nethernet.config.NetherNetAddress;
 import lombok.experimental.UtilityClass;
 import net.raphimc.minecraftauth.bedrock.BedrockAuthManager;
 import net.raphimc.minecraftauth.bedrock.model.MinecraftCertificateChain;
@@ -21,6 +22,7 @@ import org.jose4j.jwx.HeaderParameterNames;
 import org.jose4j.lang.JoseException;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.interfaces.ECPublicKey;
@@ -127,14 +129,25 @@ public class ForgeryUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static String forgeOnlineSkinData(Account account, JSONObject skinData, InetSocketAddress serverAddress) {
+    public static String forgeOnlineSkinData(Account account, JSONObject skinData, SocketAddress serverAddress) {
         String publicKeyBase64 = Base64.getEncoder().encodeToString(account.authManager().getSessionKeyPair().getPublic().getEncoded());
 
         HashMap<String,Object> overrideData = new HashMap<String,Object>();
         overrideData.put("DeviceId", account.authManager().getDeviceId().toString().replace("-", ""));
         overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
         overrideData.put("ThirdPartyName", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
-        overrideData.put("ServerAddress", serverAddress.getHostString() + ":" + String.valueOf(serverAddress.getPort()));
+
+        switch (serverAddress) {
+            case InetSocketAddress a -> {
+                overrideData.put("ServerAddress", a.getHostString() + ":" + String.valueOf(a.getPort()));
+            }
+            case NetherNetAddress a -> {
+                overrideData.put("ServerAddress", a.getNetworkId());
+            }
+            default -> {
+                throw new IllegalArgumentException("Unsupported serverAddress type: " + serverAddress.getClass().getName());
+            }
+        }
 
         skinData.putAll(overrideData);
 

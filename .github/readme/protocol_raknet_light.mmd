@@ -1,0 +1,58 @@
+---
+config:
+  layout: elk
+  theme: redux
+  look: neo
+---
+flowchart LR
+ subgraph subGraph1["Dynamically Added Handlers"]
+        EncDecoder["<b>BedrockEncryptionDecoder</b><br><i>Decrypts incoming payload</i>"]
+        EncEncoder["<b>BedrockEncryptionEncoder</b><br><i>Encrypts outgoing payload</i>"]
+  end
+ subgraph subGraph2["Bedrock Protocol ChannelPipeline"]
+    direction TB
+        Network(("Network Socket"))
+        FrameCodec["<b>FrameIdCodec</b><br><i>Encodes/Decodes<br>RakNet ID (0xFE)</i>"]
+        subGraph1
+        CompCodec["<b>CompressionCodec</b><br><i>Compresses/Decompresses<br>Zlib, Snappy, or None</i>"]
+        BatchDec["<b>BedrockBatchDecoder</b><br><i>Decodes Batched Packets</i>"]
+        BatchEnc["<b>BedrockBatchEncoder</b><br><i>Encodes Batched Packets</i>"]
+        PacketCodec["<b>BedrockPacketCodec</b><br><i>Encodes/Decodes<br>Protocol Packets</i>"]
+        Peer["<b>BedrockPeer</b><br><i>Session Management</i>"]
+        Session["<b>BedrockSession</b><br><i>Application Logic</i>"]
+  end
+    Network == Inbound <i>RakMessage</i> ==> FrameCodec
+    FrameCodec == Encrypted <i>BedrockBatchWrapper</i> ==> EncDecoder
+    EncDecoder == Decrypted <i>BedrockBatchWrapper</i> ==> CompCodec
+    CompCodec == Decompressed <i>BedrockBatchWrapper</i> ==> BatchDec
+    BatchDec == Packet <i>ByteBuf</i> ==> PacketCodec
+    PacketCodec == <i>BedrockPacketWrapper</i> ==> Peer
+    Peer -. <i>BedrockPacket</i> .-> Session
+    Session -. <i>BedrockPacket</i> .-> Peer
+    Peer == <i>BedrockPacketWrapper</i> ==> PacketCodec
+    PacketCodec == <i>BedrockPacketWrapper</i> ==> BatchEnc
+    BatchEnc == Uncompressed <i>BedrockBatchWrapper</i> ==> CompCodec
+    CompCodec == Compressed <i>BedrockBatchWrapper</i> ==> EncEncoder
+    EncEncoder == Encrypted <i>BedrockBatchWrapper</i> ==> FrameCodec
+    FrameCodec == Outbound <i>CompositeByteBuf</i> ==> Network
+
+     EncDecoder:::incoming
+     EncEncoder:::outgoing
+     BatchEnc:::outgoing
+     BatchDec:::incoming
+    classDef incoming fill:#2ecc71,stroke:#333,stroke-width:2px
+    classDef outgoing fill:#3498db,stroke:#333,stroke-width:2px
+    linkStyle 0 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 1 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 2 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 3 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 4 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 5 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 6 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 7 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 8 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 9 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 10 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 11 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 12 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 13 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
