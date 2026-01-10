@@ -8,6 +8,7 @@ import net.raphimc.minecraftauth.bedrock.model.MinecraftSession;
 import net.raphimc.minecraftauth.extra.realms.model.RealmsJoinInformation;
 import net.raphimc.minecraftauth.extra.realms.model.RealmsServer;
 import net.raphimc.minecraftauth.extra.realms.service.impl.BedrockRealmsService;
+import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.Configuration.Destination;
 import org.cloudburstmc.proxypass.network.bedrock.request.ExperienceRequest;
 import org.cloudburstmc.proxypass.network.bedrock.request.FeaturedServersRequest;
@@ -45,8 +46,7 @@ public class ServerAddress {
 
         if (realmName != null && client != null) {
             try {
-                BedrockRealmsService realmsService = new BedrockRealmsService(client, "1.21.131", account.authManager().getRealmsXstsToken());
-                realmsService.getWorlds();
+                BedrockRealmsService realmsService = new BedrockRealmsService(client, ProxyPass.CODEC.getMinecraftVersion(), account.authManager().getRealmsXstsToken());
                 
                 RealmsServer targetRealm = null;
 
