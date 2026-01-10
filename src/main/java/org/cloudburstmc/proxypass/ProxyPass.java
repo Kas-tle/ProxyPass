@@ -22,6 +22,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFactory;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
@@ -284,7 +285,7 @@ public class ProxyPass {
                 );
             }
 
-            this.server = new ServerBootstrap()
+            ChannelFuture future = new ServerBootstrap()
                     .group(this.eventLoopGroup)
                     .channelFactory(NetherNetChannelFactory.server(new PeerConnectionFactory(), signaling))
                     .childHandler(new NetherNetBedrockChannelInitializer<ProxyServerSession>() {
@@ -299,8 +300,12 @@ public class ProxyPass {
                         }
                     })
                     .bind(this.proxyAddress)
-                    .awaitUninterruptibly()
-                    .channel();
+                    .awaitUninterruptibly();
+
+            if (!future.isSuccess()) {
+                throw new IOException("Failed to bind NetherNet server to " + this.proxyAddress, future.cause());
+            }
+            this.server = future.channel();
 
             if (this.xboxSessionManager != null) {
                 try {
@@ -314,7 +319,7 @@ public class ProxyPass {
             log.info("NetherNet server started on {}", proxyAddress);
 
         } else {
-            this.server = new ServerBootstrap()
+            ChannelFuture future = new ServerBootstrap()
                     .group(this.eventLoopGroup)
                     .channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
                     .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.toByteBuf())
@@ -331,8 +336,13 @@ public class ProxyPass {
                         }
                     })
                     .bind(this.proxyAddress)
-                    .awaitUninterruptibly()
-                    .channel();
+                    .awaitUninterruptibly();
+            
+            if (!future.isSuccess()) {
+                throw new IOException("Failed to bind RakNet server to " + this.proxyAddress, future.cause());
+            }
+            this.server = future.channel();
+            
             this.server.pipeline().remove(RakServerRateLimiter.NAME);
             log.info("Bedrock server started on {}", proxyAddress);
         }
@@ -401,11 +411,14 @@ public class ProxyPass {
                 });
         }
 
-        Channel channel = bootstrap
-                .connect(socketAddress)
-                .awaitUninterruptibly()
-                .channel();
+        ChannelFuture future = bootstrap.connect(socketAddress).awaitUninterruptibly();
 
+        if (!future.isSuccess()) {
+            log.error("Failed to connect to downstream server {}: {}", socketAddress, future.cause().getMessage());
+            throw new RuntimeException("Downstream connection failed", future.cause());
+        }
+
+        Channel channel = future.channel();
         this.clients.add(channel);
     }
 
