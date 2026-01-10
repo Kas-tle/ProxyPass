@@ -1,0 +1,47 @@
+---
+config:
+  layout: elk
+  theme: redux
+  look: neo
+---
+flowchart RL
+ subgraph subGraph1["Dynamically Added Handlers"]
+        CompDecoder["<b>NetherNetCompressionDecoder</b><br><i>Decompresses incoming payload</i>"]
+        CompEncoder["<b>NetherNetCompressionEncoder</b><br><i>Compresses outgoing payload</i>"]
+  end
+ subgraph subGraph2["Bedrock Protocol ChannelPipeline (NetherNet)"]
+    direction TB
+        Network(("Network Socket"))
+        subGraph1
+        PackDec["<b>NetherNetPacketDecoder</b><br><i>Encodes NetherNet Packets</i>"]
+        PackEnc["<b>NetherNetPacketEncoder</b><br><i>Decodes NetherNet Packets</i>"]
+        PacketCodec["<b>BedrockPacketCodec</b><br><i>Encodes/Decodes<br>Protocol Packets</i>"]
+        Peer["<b>BedrockPeer</b><br><i>Session Management</i>"]
+        Session["<b>BedrockSession</b><br><i>Application Logic</i>"]
+  end
+    Network == Compressed <i>ByteBuf</i> ==> CompDecoder
+    CompDecoder == Decompressed <i>ByteBuf</i> ==> PackDec
+    PackDec == Packet <i>ByteBuf</i> ==> PacketCodec
+    PacketCodec == <i>BedrockPacketWrapper</i> ==> Peer & PackEnc
+    Peer -. <i>BedrockPacket</i> .-> Session
+    Session -. <i>BedrockPacket</i> .-> Peer
+    Peer == <i>BedrockPacketWrapper</i> ==> PacketCodec
+    PackEnc == Packet <i>ByteBuf</i> ==> CompEncoder
+    CompEncoder == Compressed <i>ByteBuf</i> ==> Network
+
+     CompDecoder:::incoming
+     CompEncoder:::outgoing
+     PackDec:::incoming
+     PackEnc:::outgoing
+    classDef incoming fill:#2ecc71,stroke:#333,stroke-width:2px
+    classDef outgoing fill:#3498db,stroke:#333,stroke-width:2px
+    linkStyle 0 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 1 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 2 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 3 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 4 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 5 stroke:#2ecc71,stroke-width:4px,color:#2ecc71,_,fill:none
+    linkStyle 6 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 7 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 8 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none
+    linkStyle 9 stroke:#3498db,stroke-width:4px,color:#3498db,_,fill:none

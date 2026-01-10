@@ -151,6 +151,26 @@ This project utilizes git submodules and [Gradle Composite Builds](https://docs.
 
 ProxyPass directly depends on the protocol submodule via the root [settings.gradle.kts](./settings.gradle.kts). Protocol then depends on the network submodule via its own [settings.gradle.kts](https://github.com/Kas-tle/Protocol/blob/50836b73f09103de9e5539c14da3fe05deec6c54/settings.gradle.kts). We can observe in a [gradle build scan](https://scans.gradle.com/s/gu5fploqzyafs) that dependency resolution for both [Protocol](https://scans.gradle.com/s/gu5fploqzyafs/dependencies?focusedDependency=WzAsMSwxMDAsWzAsMSxbMTAwXV1d&focusedDependencyView=details&toggled=W1swXSxbMCwxXV0) and [Network](https://scans.gradle.com/s/gu5fploqzyafs/dependencies?focusedDependency=WzMsMSwyMzIsWzMsMSxbMjMyXV1d&focusedDependencyView=details&toggled=W1szXSxbMywxXV0) were selected by composite build substitution rather than from a Maven repository.
 
+### Packet Flows
+
+#### Raknet
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/readme/protocol_raknet_dark.svg">
+  <img src=".github/readme/protocol_raknet_light.svg">
+</picture>
+
+#### Nethernet
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/readme/protocol_nethernet_dark.svg">
+  <img src=".github/readme/protocol_nethernet_light.svg">
+</picture>
+
 ### Links
 - [Releases](https://github.com/Kas-tle/ProxyPass/releases)
 - [Auth Library](https://github.com/RaphiMC/MinecraftAuth) used in this project by [RaphiMC](https://github.com/RaphiMC)
