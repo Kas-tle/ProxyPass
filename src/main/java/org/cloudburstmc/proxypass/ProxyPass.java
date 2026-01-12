@@ -172,7 +172,7 @@ public class ProxyPass {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
         
         // dev.kastle.webrtc.logging.Logging.addLogSink(dev.kastle.webrtc.logging.Logging.Severity.ERROR, (severity, message) -> {
-        //     System.out.println("[WebRTC Native] " + message);
+        //     log.trace("[WebRTC Native] " + message.stripTrailing());
         // });
 
         ProxyPass proxy = new ProxyPass();

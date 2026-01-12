@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class XboxSessionManager {
 
-    private static final String SCID = "4fc10100-5f7a-4470-899b-280835760c07";
+    public static final String SCID = "4fc10100-5f7a-4470-899b-280835760c07";
     private static final String TEMPLATE = "MinecraftLobby";
     private static final Gson GSON = new Gson();
 

@@ -90,6 +90,8 @@ public class Configuration {
         private String featuredServerTitle;
         @JsonProperty("realm-name")
         private String realmName;
+        @JsonProperty("friend-name")
+        private String friendName;
         @JsonProperty("nethernet-id")
         private String nethernetId;
         @JsonProperty("transport")

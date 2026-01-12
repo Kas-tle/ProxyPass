@@ -12,9 +12,15 @@ import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.Configuration.Destination;
 import org.cloudburstmc.proxypass.network.bedrock.request.ExperienceRequest;
 import org.cloudburstmc.proxypass.network.bedrock.request.FeaturedServersRequest;
+import org.cloudburstmc.proxypass.network.bedrock.request.SessionGetRequest;
+import org.cloudburstmc.proxypass.network.bedrock.request.SessionHandleQueryRequest;
 import org.cloudburstmc.proxypass.network.bedrock.request.model.Experience;
 import org.cloudburstmc.proxypass.network.bedrock.request.model.FeaturedServers;
 import org.cloudburstmc.proxypass.network.bedrock.request.model.featuredservers.FeaturedServer;
+import org.cloudburstmc.proxypass.network.bedrock.request.model.sessiondirectory.SessionGetResult;
+import org.cloudburstmc.proxypass.network.bedrock.request.model.sessiondirectory.SessionHandleQueryData;
+import org.cloudburstmc.proxypass.network.bedrock.request.model.sessiondirectory.SessionHandleQueryResult;
+import org.cloudburstmc.proxypass.xbox.XboxSessionManager;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -33,6 +39,7 @@ public class ServerAddress {
         String experienceId = destination.getExperienceId();
         String featuredServerTitle = destination.getFeaturedServerTitle();
         String realmName = destination.getRealmName();
+        String friendName = destination.getFriendName();
         String nethernetId = destination.getNethernetId();
 
         log.info("Resolving server address for destination: host={}, port={}, experienceId={}, featuredServerTitle={}, realmName={}",
@@ -42,6 +49,55 @@ public class ServerAddress {
             this.address = new NetherNetAddress(nethernetId);
             log.info("Using NetherNet address with ID {}", nethernetId);
             return;
+        }
+
+        if (friendName != null && client != null) {
+            try {
+                SessionHandleQueryResult result = client.executeAndHandle(
+                    new SessionHandleQueryRequest(
+                        account.authManager().getXboxLiveXstsToken().getUpToDate(),
+                        SessionHandleQueryData.builder()
+                            .scid(XboxSessionManager.SCID)
+                            .monikerXuid(account.authManager().getMinecraftMultiplayerToken().getUpToDate().getXuid())
+                            .build()
+                    )
+                );
+
+                for (SessionHandleQueryResult.HandleResult handle : result.getResults()) {
+                    if (handle.getSessionRef() == null) continue;
+                    if (handle.getSessionRef().getScid() == null) continue;
+                    if (handle.getSessionRef().getTemplateName() == null) continue;
+                    if (handle.getSessionRef().getName() == null) continue;
+                    if (handle.getCustomProperties() == null) continue;
+                    if (handle.getCustomProperties().getSupportedConnections() == null) continue;
+                    if (handle.getCustomProperties().getSupportedConnections().isEmpty()) continue;
+
+                    SessionGetResult session = client.executeAndHandle(
+                        new SessionGetRequest(
+                            account.authManager().getXboxLiveXstsToken().getUpToDate(),
+                            handle.getSessionRef().getScid(),
+                            handle.getSessionRef().getTemplateName(),
+                            handle.getSessionRef().getName()
+                        )
+                    );
+
+                    for (SessionGetResult.SessionMember member : session.getMembers().values()) {
+                        if (!friendName.equalsIgnoreCase(member.getGamertag())) continue;
+
+                        String netherNetId = handle.getCustomProperties().getSupportedConnections().get(0).getNetherNetId();
+                        if (netherNetId == null || netherNetId.isEmpty()) {
+                            log.warn("Friend '{}' does not have a valid NetherNet ID in their session", friendName);
+                            continue;
+                        } else {
+                            this.address = new NetherNetAddress(netherNetId);
+                            log.info("Resolved friend's ('{}') session handle to NetherNet ID {}", friendName, netherNetId);
+                            return;
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Failed to resolve friend's session handle", e);
+            }
         }
 
         if (realmName != null && client != null) {

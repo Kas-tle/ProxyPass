@@ -32,6 +32,8 @@ destination:
 online-mode: true
 ## Save credentials when in online mode for future logins.
 save-auth-details: true
+## Broadcast the ProxyPass session over Xbox Live (should generally not be enabled, as it would allow any friend to join as you)
+broadcast-session: false
 ## Maximum of clients which can connect to ProxyPass. If this should be disabled, set it to 0.
 max-clients: 0
 ## Encode and decode packets to test protocol library for bugs
@@ -60,7 +62,7 @@ ignored-packets:
   - "ClientCacheMissResponsePacket"
 ```
 
-The destination field also supports special joining types for featured servers by experience ID, realms, and LAN games:
+The destination field also supports special joining types for featured servers by experience ID, realms, friend worlds, and LAN games:
 
 <details>
 
@@ -108,6 +110,19 @@ destination:
   # Join a realm by specifying its name
   realm-name: MyRealm
   transport: nethernet # Realms now uses Nethernet transport
+```
+
+</details>
+
+<details>
+
+<summary>Friend Worlds</summary>
+
+```yaml
+destination:
+  # Join an online friend's world by specifying their name
+  friend-name: MyFriend
+  transport: nethernet
 ```
 
 </details>
