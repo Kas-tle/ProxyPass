@@ -1,9 +1,9 @@
 {
 	"name": "Java",
-	"image": "mcr.microsoft.com/devcontainers/java:1-17-buster",
+	"image": "mcr.microsoft.com/devcontainers/java:25",
 	"features": {
 		"ghcr.io/devcontainers/features/java:1": {
-			"version": "17",
+			"version": "25",
 			"additionalVersions": "8",
 			"installMaven": "false",
 			"installGradle": "true"
