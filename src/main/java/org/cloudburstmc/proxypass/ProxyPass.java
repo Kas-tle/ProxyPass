@@ -44,7 +44,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
-import org.cloudburstmc.protocol.bedrock.codec.v898.Bedrock_v898;
+import org.cloudburstmc.protocol.bedrock.codec.v924.Bedrock_v924;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
@@ -94,11 +94,11 @@ public class ProxyPass {
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodecHelper HELPER = Bedrock_v898.CODEC.createHelper();
-    public static final BedrockCodec CODEC = Bedrock_v898.CODEC
+    public static final BedrockCodecHelper HELPER = Bedrock_v924.CODEC.createHelper();
+    public static final BedrockCodec CODEC = Bedrock_v924.CODEC
         .toBuilder()
-        .protocolVersion(898)
-        .minecraftVersion("1.21.130")
+        .protocolVersion(924)
+        .minecraftVersion("1.26.0")
         .helper(() -> HELPER).build();
         
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();

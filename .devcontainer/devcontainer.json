@@ -8,5 +8,18 @@
 			"installMaven": "false",
 			"installGradle": "true"
 		}
-	}
+	},
+    "postCreateCommand": "git submodule update --init --recursive",
+    "customizations": {
+        "codespaces": {
+            "repositories": {
+                "Kas-tle/NetworkCompatible": {
+                    "permissions": "write-all"
+                },
+                "Kas-tle/Protocol": {
+                    "permissions": "write-all"
+                }
+            }
+        }
+    }
 }
