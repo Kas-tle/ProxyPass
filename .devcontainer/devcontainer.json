@@ -9,6 +9,7 @@
 			"installGradle": "true"
 		}
 	},
+    "postCreateCommand": "git submodule update --init --recursive",
     "customizations": {
         "codespaces": {
             "repositories": {
