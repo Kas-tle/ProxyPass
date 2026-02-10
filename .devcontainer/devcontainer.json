@@ -8,5 +8,17 @@
 			"installMaven": "false",
 			"installGradle": "true"
 		}
-	}
+	},
+    "customizations": {
+        "codespaces": {
+            "repositories": {
+                "Kas-tle/NetworkCompatible": {
+                    "permissions": "write-all"
+                },
+                "Kas-tle/Protocol": {
+                    "permissions": "write-all"
+                }
+            }
+        }
+    }
 }
