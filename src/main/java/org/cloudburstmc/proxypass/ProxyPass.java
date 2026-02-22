@@ -12,9 +12,11 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.kastle.netty.channel.nethernet.NetherNetChannelFactory;
+import dev.kastle.netty.channel.nethernet.config.NetherChannelOption;
 import dev.kastle.netty.channel.nethernet.config.NetherNetAddress;
 import dev.kastle.netty.channel.nethernet.signaling.NetherNetClientSignaling;
 import dev.kastle.netty.channel.nethernet.signaling.NetherNetDiscoverySignaling;
+import dev.kastle.netty.channel.nethernet.signaling.NetherNetXboxRpcSignaling;
 import dev.kastle.netty.channel.nethernet.signaling.NetherNetServerSignaling;
 import dev.kastle.netty.channel.nethernet.signaling.NetherNetXboxSignaling;
 import dev.kastle.webrtc.PeerConnectionFactory;
@@ -160,6 +162,7 @@ public class ProxyPass {
     private SocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
+    private ServerAddress serverAddress;
     private Path baseDir;
     private Path sessionsDir;
     private Path dataDir;
@@ -230,8 +233,8 @@ public class ProxyPass {
             }
         }
 
-        ServerAddress serverAddress = new ServerAddress(configuration.getDestination(), account, client);
-        targetAddress = serverAddress.getAddress();
+        this.serverAddress = new ServerAddress(configuration.getDestination(), account, client);
+        this.targetAddress = serverAddress.getAddress();
 
         Object object = this.loadGzipNBT("block_palette.nbt");
 
@@ -360,9 +363,15 @@ public class ProxyPass {
             NetherNetClientSignaling signaling;
 
             if (socketAddress instanceof NetherNetAddress) {
-                signaling = new NetherNetXboxSignaling(
-                    account.authManager().getMinecraftSession().getCached().getAuthorizationHeader()
-                );
+                if (this.serverAddress.getNetworkProtocol().equalsIgnoreCase("NETHERNET_JSONRPC")) {
+                    signaling = new NetherNetXboxRpcSignaling(
+                        account.authManager().getMinecraftSession().getCached().getAuthorizationHeader()
+                    );
+                } else {
+                    signaling = new NetherNetXboxSignaling(
+                        account.authManager().getMinecraftSession().getCached().getAuthorizationHeader()
+                    );
+                }
             } else {
                 signaling = new NetherNetDiscoverySignaling();
             }
@@ -398,6 +407,7 @@ public class ProxyPass {
                 });
         } else {
             bootstrap
+                .option(NetherChannelOption.NETHER_CLIENT_HANDSHAKE_TIMEOUT_MS, 6000)
                 .handler(new NetherNetBedrockChannelInitializer<ProxyClientSession>() {
                     @Override
                     protected ProxyClientSession createSession0(BedrockPeer peer, int subClientId) {

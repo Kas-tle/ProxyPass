@@ -30,6 +30,8 @@ import java.net.SocketAddress;
 public class ServerAddress {
     @Getter
     private SocketAddress address;
+    @Getter
+    private String networkProtocol;
     private String host;
     private int port;
 
@@ -125,19 +127,19 @@ public class ServerAddress {
                         throw new IllegalArgumentException("Realms API provided no server address!");
                     }
 
+                    this.networkProtocol = protocol;
+
                     if (protocol.equalsIgnoreCase("NETHERNET")) {
                         this.address = new NetherNetAddress(fullAddress);
                         return;
-                    } else {
-                        String[] parts = fullAddress.split(":");
-                        this.host = parts[0];
-                        if (parts.length > 1) {
-                            this.port = Integer.parseInt(parts[1]);
-                        } else {
-                            this.port = 19132;
-                        }
-                        log.info("Resolved Realm '{}' to {}:{}", realmName, this.host, this.port);
                     }
+
+                    if (protocol.equalsIgnoreCase("NETHERNET_JSONRPC")) {
+                        this.address = new NetherNetAddress(fullAddress);
+                        return;
+                    } 
+
+                    throw new IllegalArgumentException("Unsupported Realms network protocol: " + protocol);
                 } else {
                     log.warn("Could not find Realm with name: {}", realmName);
                 }
@@ -181,6 +183,7 @@ public class ServerAddress {
                 }
                 this.host = experience.getResult().getIpV4Address();
                 this.port = experience.getResult().getPort();
+                this.networkProtocol = experience.getResult().getNetworkProtocol();
                 log.info("Resolved experience ID {} to {}:{}", experienceId, this.host, this.port);
             } catch (IOException e) {
                 log.error("Failed to fetch experience", e);
