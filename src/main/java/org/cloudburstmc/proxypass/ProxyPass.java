@@ -363,7 +363,7 @@ public class ProxyPass {
             NetherNetClientSignaling signaling;
 
             if (socketAddress instanceof NetherNetAddress) {
-                if (this.serverAddress.getNetworkProtocol().equalsIgnoreCase("NETHERNET_JSONRPC")) {
+                if ("NETHERNET_JSONRPC".equalsIgnoreCase(this.serverAddress.getNetworkProtocol())) {
                     signaling = new NetherNetXboxRpcSignaling(
                         account.authManager().getMinecraftSession().getCached().getAuthorizationHeader()
                     );
