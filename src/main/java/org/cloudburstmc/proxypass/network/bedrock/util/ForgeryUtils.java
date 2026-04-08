@@ -77,6 +77,10 @@ public class ForgeryUtils {
     }
 
     public static AuthPayload forgeOnlineAuthData(BedrockAuthManager authManager, ECPublicKey mojangPublicKey) throws InvalidJwtException, JoseException {
+        if (ProxyPass.CODEC.getProtocolVersion() > 924) {
+            return new DualPayload(List.of(".."), authManager.getMinecraftMultiplayerToken().getCached().getToken(), AuthType.FULL);
+        }
+
         MinecraftCertificateChain mcChain = authManager.getMinecraftCertificateChain().getCached();
         KeyPair sessionKeyPair = authManager.getSessionKeyPair();
         String publicBase64Key = Base64.getEncoder().encodeToString(sessionKeyPair.getPublic().getEncoded());
@@ -134,7 +138,10 @@ public class ForgeryUtils {
 
         HashMap<String,Object> overrideData = new HashMap<String,Object>();
         overrideData.put("DeviceId", account.authManager().getDeviceId().toString().replace("-", ""));
-        overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
+        if (ProxyPass.CODEC.getProtocolVersion() < 944) {
+            // Chain is no longer sent in v944 and above, so it should no longer be possible for a server to detect that auth was from android
+            overrideData.put("DeviceOS", 1); // Android per MinecraftAuth 4.0
+        }
         overrideData.put("ThirdPartyName", account.authManager().getMinecraftMultiplayerToken().getCached().getDisplayName());
 
         switch (serverAddress) {
