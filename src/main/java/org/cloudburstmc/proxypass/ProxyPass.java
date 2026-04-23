@@ -554,13 +554,18 @@ public class ProxyPass {
         BedrockAuthManager authManager = authManagerBuilder.login(DeviceCodeMsaAuthService::new, new Consumer<MsaDeviceCode>() {
             @Override
             public void accept(MsaDeviceCode msaDeviceCode) {
-                log.info("Go to " + msaDeviceCode.getVerificationUri() + "?otc=" + msaDeviceCode.getUserCode());
+                URI verificationUri = URI.create(
+                        msaDeviceCode.getVerificationUri()
+                                + (URI.create(msaDeviceCode.getVerificationUri()).getQuery() != null ? '&' : '?') + "otc=" + msaDeviceCode.getUserCode()
+                );
+
+                log.info("Go to " + verificationUri);
                 log.info("Enter code " + msaDeviceCode.getUserCode());
 
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                     try {
-                        Desktop.getDesktop().browse(new URI(msaDeviceCode.getVerificationUri() + "?otc=" + msaDeviceCode.getUserCode()));
-                    } catch (IOException | URISyntaxException e) {
+                        Desktop.getDesktop().browse(verificationUri);
+                    } catch (IOException e) {
                         log.error("Failed to open browser", e);
                     }
                 }
