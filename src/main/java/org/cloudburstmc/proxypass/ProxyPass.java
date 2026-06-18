@@ -46,7 +46,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
-import org.cloudburstmc.protocol.bedrock.codec.v975.Bedrock_v975;
+import org.cloudburstmc.protocol.bedrock.codec.v1001.Bedrock_v1001;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
@@ -67,16 +67,12 @@ import org.cloudburstmc.proxypass.xbox.XboxSessionManager;
 
 import java.awt.Color;
 import java.awt.Desktop;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -96,19 +92,19 @@ public class ProxyPass {
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodecHelper HELPER = Bedrock_v975.CODEC.createHelper();
-    public static final BedrockCodec CODEC = Bedrock_v975.CODEC
+    public static final BedrockCodecHelper HELPER = Bedrock_v1001.CODEC.createHelper();
+    public static final BedrockCodec CODEC = Bedrock_v1001.CODEC
         .toBuilder()
-        .protocolVersion(975)
-        .minecraftVersion("1.26.20")
+        .protocolVersion(1001)
+        .minecraftVersion("1.26.30")
         .helper(() -> HELPER).build();
         
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
             .gameType("Survival")
-            .version(ProxyPass.MINECRAFT_VERSION)
-            .protocolVersion(ProxyPass.PROTOCOL_VERSION)
+            .version(CODEC.getMinecraftVersion())
+            .protocolVersion(CODEC.getProtocolVersion())
             .motd("ProxyPass")
             .playerCount(0)
             .maximumPlayerCount(20)
