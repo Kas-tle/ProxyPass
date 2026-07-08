@@ -47,6 +47,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Override
+    public PacketSignal handlePacket(BedrockPacket packet) {
+        return BedrockPacketHandler.super.handlePacket(packet);
+    }
+
+    @Override
     public PacketSignal handle(RequestNetworkSettingsPacket packet) {
         int protocolVersion = packet.getProtocolVersion();
 
