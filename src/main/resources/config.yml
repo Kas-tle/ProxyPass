@@ -41,3 +41,8 @@ ignored-packets:
   - "NetworkChunkPublisherUpdatePacket"
   - "ClientCacheBlobStatusPacket"
   - "ClientCacheMissResponsePacket"
+## Should ProxyPass lie and say the client already has all the packs, even if it doesn't
+ignore-resource-packs: false
+
+## Packets to block going to and from the client.
+blocks-packets: []

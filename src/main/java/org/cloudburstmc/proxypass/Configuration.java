@@ -48,6 +48,11 @@ public class Configuration {
     private boolean invertIgnoredList = false;
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
+    @JsonProperty("ignore-resource-packs")
+    private boolean ignoreResourcePacks = false;
+
+    @JsonProperty("blocks-packets")
+    private Set<String> blocksPackets = Collections.emptySet();
 
     public static Configuration load(Path path) throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(path)) {

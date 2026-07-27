@@ -150,6 +150,8 @@ public class ProxyPass {
     private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
+    @Getter(AccessLevel.NONE)
+    private final Set<Class<?>> blockedPackets = Collections.newSetFromMap(new IdentityHashMap<>());
     private Channel server;
     private int maxClients = 0;
     private boolean onlineMode = false;
@@ -206,7 +208,18 @@ public class ProxyPass {
             try {
                 ignoredPackets.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
             } catch (ClassNotFoundException e) {
-                log.warn("No packet with name {}", s);
+                log.warn("No packet with name {} for ignored packets", s);
+            }
+        });
+
+        log.warn(configuration.getBlocksPackets());
+
+        configuration.getBlocksPackets().forEach(s -> {
+            try {
+                blockedPackets.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
+                log.warn("Blocking {}.", s);
+            } catch (ClassNotFoundException e) {
+                log.warn("No packet with name {} for blocked packets", s);
             }
         });
 
@@ -523,6 +536,10 @@ public class ProxyPass {
 
     public boolean isIgnoredPacket(Class<?> clazz) {
         return this.configuration.isInvertIgnoredList() != this.ignoredPackets.contains(clazz);
+    }
+
+    public boolean isBlockedPacket(Class<?> clazz) {
+        return this.blockedPackets.contains(clazz);
     }
 
     public boolean isFull() {

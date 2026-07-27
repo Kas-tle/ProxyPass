@@ -8,6 +8,8 @@ import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
 
 import java.nio.file.Path;
 import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.List;
 
 @Log4j2
 @Getter
@@ -21,6 +23,7 @@ public class ProxyPlayerSession {
     private final KeyPair proxyKeyPair;
     private final Path dataPath;
     private final PackDownloader packDownloader;
+    private final List<String> packIds = new ArrayList<>();
     private volatile boolean closed = false;
 
     public final SessionLogger logger;

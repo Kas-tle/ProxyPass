@@ -9,6 +9,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
+import org.cloudburstmc.protocol.bedrock.packet.ResourcePacksInfoPacket;
 import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -34,6 +35,25 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
+        if (proxyPass.isBlockedPacket(packet.getClass())) return;
+        if (packet instanceof ResourcePacksInfoPacket infoPacket && proxyPass.getConfiguration().isIgnoreResourcePacks()) {
+            player.getPackIds().addAll(infoPacket.getResourcePackInfos().stream().map(entry -> entry.getPackId() + "_" + entry.getPackVersion()).toList());
+            ResourcePacksInfoPacket newPacket = new ResourcePacksInfoPacket();
+            newPacket.setForcedToAccept(infoPacket.isForcedToAccept());
+            newPacket.setHasAddonPacks(infoPacket.isHasAddonPacks());
+            newPacket.setScriptingEnabled(infoPacket.isScriptingEnabled());
+            newPacket.setForcingServerPacksEnabled(infoPacket.isForcingServerPacksEnabled());
+            newPacket.setWorldTemplateId(infoPacket.getWorldTemplateId());
+            newPacket.setWorldTemplateVersion(infoPacket.getWorldTemplateVersion());
+            newPacket.setVibrantVisualsForceDisabled(infoPacket.isVibrantVisualsForceDisabled());
+            wrapper = BedrockPacketWrapper.create(
+                    wrapper.getPacketId(),
+                    wrapper.getSenderSubClientId(),
+                    wrapper.getTargetSubClientId(),
+                    packet, null
+            );
+            packet = newPacket;
+        }
         player.logger.logPacket(this, wrapper, false);
         if (proxyPass.getConfiguration().isPacketTesting()) {
             TestUtils.testPacket(this, wrapper);
@@ -44,6 +64,10 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
         } else if (this.packetHandler.handlePacket(packet) == PacketSignal.UNHANDLED && this.sendSession != null) {
             // this.sendSession.sendPacket(ReferenceCountUtil.retain(packet));
 
+            if (wrapper.getPacketBuffer() == null) {
+                this.sendSession.sendPacket(packet);
+                return;
+            }
             ByteBuf buffer = wrapper.getPacketBuffer()
                     .retainedSlice()
                     .skipBytes(wrapper.getHeaderLength());
