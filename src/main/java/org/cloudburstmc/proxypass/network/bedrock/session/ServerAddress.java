@@ -93,6 +93,7 @@ public class ServerAddress {
                         } else {
                             this.address = new NetherNetAddress(netherNetId);
                             log.info("Resolved friend's ('{}') session handle to NetherNet ID {}", friendName, netherNetId);
+                            this.networkProtocol = "NETHERNET_JSONRPC";
                             return;
                         }
                     }

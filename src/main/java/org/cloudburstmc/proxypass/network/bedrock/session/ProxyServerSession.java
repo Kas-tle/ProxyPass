@@ -9,6 +9,8 @@ import org.cloudburstmc.protocol.bedrock.BedrockServerSession;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
+import org.cloudburstmc.protocol.bedrock.packet.ResourcePackClientResponsePacket;
+import org.cloudburstmc.protocol.bedrock.packet.ResourcePacksInfoPacket;
 import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -34,8 +36,14 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
+        if (proxyPass.isBlockedPacket(packet.getClass())) return;
         if (player != null) {
             player.logger.logPacket(this, wrapper, true);
+            if (packet instanceof ResourcePackClientResponsePacket responsePacket && proxyPass.getConfiguration().isIgnoreResourcePacks()) {
+                for (String packId : player.getPackIds()) {
+                    if (!responsePacket.getPackIds().contains(packId)) responsePacket.getPackIds().add(packId);
+                }
+            }
         }
 
         if (proxyPass.getConfiguration().isPacketTesting()) {
