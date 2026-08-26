@@ -95,8 +95,8 @@ public class ProxyPass {
     public static final BedrockCodecHelper HELPER = Bedrock_v1001.CODEC.createHelper();
     public static final BedrockCodec CODEC = Bedrock_v1001.CODEC
         .toBuilder()
-        .protocolVersion(1001)
-        .minecraftVersion("1.26.30")
+        .protocolVersion(2168)
+        .minecraftVersion("1.26.40")
         .helper(() -> HELPER).build();
         
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
